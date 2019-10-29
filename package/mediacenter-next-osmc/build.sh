@@ -334,7 +334,7 @@ then
 	mkdir build
 	cd build
         #ADDONS_AUDIO_DECODERS="audiodecoder.modplug audiodecoder.nosefart audiodecoder.sidplay audiodecoder.snesapu"
-        ADDONS_AUDIO_ENCODERS="audioencoder.flac audioencoder.lame audioencoder.vorbis audioencoder.wav"
+        ADDONS_AUDIO_ENCODERS="audioencoder.wav"
         ADDONS_INPUTSTREAM="inputstream.mpd inputstream.adaptive inputstream.rtmp"
 	ADDONS_PERIPHERAL="peripheral.xarcade peripheral.joystick imagedecoder.raw peripheral.steamcontroller"
 	ADDONS_PVR="pvr.waipu pvr.sledovanitv.cz pvr.argustv pvr.mythtv pvr.hts pvr.pctv pvr.stalker pvr.filmon pvr.octonet pvr.zattoo pvr.vbox pvr.wmc pvr.nextpvr pvr.njoy pvr.teleboy pvr.vdr.vnsi pvr.vuplus pvr.dvbviewer pvr.dvblink pvr.hdhomerun pvr.iptvsimple pvr.demo pvr.mediaportal.tvserver"
@@ -344,7 +344,7 @@ then
 	ADDONS_GAME="game.libretro.mame2000 game.libretro.mame2003 game.libretro.scummvm game.libretro game.libretro.2048 game.libretro.beetle-gba game.libretro.fceumm game.libretro.gw game.libretro.beetle-pce-fast game.libretro.bnes game.libretro.nestopia game.libretro.bsnes-mercury-balanced game.libretro.bluemsx game.libretro.vecx game.libretro.gambatte game.libretro.beetle-bsnes game.libretro.meteor game.libretro.mgba game.libretro.vba-next game.libretro.quicknes game.libretro.snes9x game.libretro.stella game.libretro.dosbox game.libretro.vbam game.libretro.genplus"
 	if [ "$1" == "rbp1" ] || [ "$1" == "rbp2" ]
 	then
-	    ADDONS_TO_BUILD="${ADDONS_AUDIO_ENCODERS} ${ADDONS_INPUTSTREAM} ${ADDONS_PERIPHERAL}"
+	    ADDONS_TO_BUILD="${ADDONS_AUDIO_ENCODERS} ${ADDONS_INPUTSTREAM}"
 	    PLATFORM="-DCMAKE_INCLUDE_PATH=/opt/vc/include:/opt/vc/include/interface:/opt/vc/include/interface/vcos/pthreads:/opt/vc/include/interface/vmcs_host/linux -DCMAKE_LIBRARY_PATH=/opt/vc/lib"
 	fi
 	if [ "$1" == "vero2" ]
