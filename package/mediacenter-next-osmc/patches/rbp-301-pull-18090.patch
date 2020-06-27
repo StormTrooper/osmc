@@ -1,0 +1,74 @@
+From e93ef5eb705bcc6d4ce37548c3ab06a029607c22 Mon Sep 17 00:00:00 2001
+From: djp952 <djp952@gmail.com>
+Date: Mon, 22 Jun 2020 17:12:51 -0400
+Subject: [PATCH] [PVR] Clean up API v7 warnings generated on Microsoft
+ compilers
+
+---
+ .../kodi-addon-dev-kit/include/kodi/AddonBase.h       |  2 +-
+ .../include/kodi/addon-instance/pvr/Timers.h          | 11 ++++++-----
+ 2 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/xbmc/addons/kodi-addon-dev-kit/include/kodi/AddonBase.h b/xbmc/addons/kodi-addon-dev-kit/include/kodi/AddonBase.h
+index f1fcc9168396..0653db950651 100644
+--- a/xbmc/addons/kodi-addon-dev-kit/include/kodi/AddonBase.h
++++ b/xbmc/addons/kodi-addon-dev-kit/include/kodi/AddonBase.h
+@@ -1241,7 +1241,7 @@ inline void* GetInterface(const std::string& name, const std::string& version)
+  */
+ #define ADDONCREATOR(AddonClass) \
+   extern "C" __declspec(dllexport) ADDON_STATUS ADDON_Create( \
+-      KODI_HANDLE addonInterface, const char* globalApiVersion, void* unused) \
++      KODI_HANDLE addonInterface, const char* /*globalApiVersion*/, void* /*unused*/) \
+   { \
+     kodi::addon::CAddonBase::m_interface = static_cast<AddonGlobalInterface*>(addonInterface); \
+     kodi::addon::CAddonBase::m_interface->addonBase = new AddonClass; \
+diff --git a/xbmc/addons/kodi-addon-dev-kit/include/kodi/addon-instance/pvr/Timers.h b/xbmc/addons/kodi-addon-dev-kit/include/kodi/addon-instance/pvr/Timers.h
+index b838f1c08d99..5d0d65ac12e1 100644
+--- a/xbmc/addons/kodi-addon-dev-kit/include/kodi/addon-instance/pvr/Timers.h
++++ b/xbmc/addons/kodi-addon-dev-kit/include/kodi/addon-instance/pvr/Timers.h
+@@ -627,7 +627,7 @@ class PVRTimerType : public CStructHdl<PVRTimerType, PVR_TIMER_TYPE>
+   /// @copydetails cpp_kodi_addon_pvr_Defs_PVRTypeIntValue_Help
+   void SetPriorities(const std::vector<PVRTypeIntValue>& priorities, int prioritiesDefault = -1)
+   {
+-    m_cStructure->iPrioritiesSize = priorities.size();
++    m_cStructure->iPrioritiesSize = static_cast<unsigned int>(priorities.size());
+     for (unsigned int i = 0;
+          i < m_cStructure->iPrioritiesSize && i < sizeof(m_cStructure->priorities); ++i)
+     {
+@@ -679,7 +679,7 @@ class PVRTimerType : public CStructHdl<PVRTimerType, PVR_TIMER_TYPE>
+   /// @copydetails cpp_kodi_addon_pvr_Defs_PVRTypeIntValue_Help
+   void SetLifetimes(const std::vector<PVRTypeIntValue>& lifetimes, int lifetimesDefault = -1)
+   {
+-    m_cStructure->iLifetimesSize = lifetimes.size();
++    m_cStructure->iLifetimesSize = static_cast<unsigned int>(lifetimes.size());
+     for (unsigned int i = 0;
+          i < m_cStructure->iLifetimesSize && i < sizeof(m_cStructure->lifetimes); ++i)
+     {
+@@ -735,7 +735,8 @@ class PVRTimerType : public CStructHdl<PVRTimerType, PVR_TIMER_TYPE>
+       const std::vector<PVRTypeIntValue>& preventDuplicateEpisodes,
+       int preventDuplicateEpisodesDefault = -1)
+   {
+-    m_cStructure->iPreventDuplicateEpisodesSize = preventDuplicateEpisodes.size();
++    m_cStructure->iPreventDuplicateEpisodesSize =
++        static_cast<unsigned int>(preventDuplicateEpisodes.size());
+     for (unsigned int i = 0; i < m_cStructure->iPreventDuplicateEpisodesSize &&
+                              i < sizeof(m_cStructure->preventDuplicateEpisodes);
+          ++i)
+@@ -791,7 +792,7 @@ class PVRTimerType : public CStructHdl<PVRTimerType, PVR_TIMER_TYPE>
+   void SetRecordingGroups(const std::vector<PVRTypeIntValue>& recordingGroup,
+                           int recordingGroupDefault = -1)
+   {
+-    m_cStructure->iRecordingGroupSize = recordingGroup.size();
++    m_cStructure->iRecordingGroupSize = static_cast<unsigned int>(recordingGroup.size());
+     for (unsigned int i = 0;
+          i < m_cStructure->iRecordingGroupSize && i < sizeof(m_cStructure->recordingGroup); ++i)
+     {
+@@ -842,7 +843,7 @@ class PVRTimerType : public CStructHdl<PVRTimerType, PVR_TIMER_TYPE>
+   void SetMaxRecordings(const std::vector<PVRTypeIntValue>& maxRecordings,
+                         int maxRecordingsDefault = -1)
+   {
+-    m_cStructure->iMaxRecordingsSize = maxRecordings.size();
++    m_cStructure->iMaxRecordingsSize = static_cast<unsigned int>(maxRecordings.size());
+     for (unsigned int i = 0;
+          i < m_cStructure->iMaxRecordingsSize && i < sizeof(m_cStructure->maxRecordings); ++i)
+     {
