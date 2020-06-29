@@ -1,0 +1,21 @@
+From 2cb7401f5fcd156cd4e0fbee34bfee4da4871121 Mon Sep 17 00:00:00 2001
+From: ronie <ronie@kodi.tv>
+Date: Sat, 20 Jun 2020 15:48:55 +0200
+Subject: [PATCH] [xbmc.gui] drop backward compatibility for Leia skins
+
+---
+ addons/xbmc.gui/addon.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/addons/xbmc.gui/addon.xml b/addons/xbmc.gui/addon.xml
+index 316919080694..261166970a79 100644
+--- a/addons/xbmc.gui/addon.xml
++++ b/addons/xbmc.gui/addon.xml
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <addon id="xbmc.gui" version="5.15.0" provider-name="Team Kodi">
+-  <backwards-compatibility abi="5.14.0"/>
++  <backwards-compatibility abi="5.15.0"/>
+   <requires>
+     <import addon="xbmc.core" version="0.1.0"/>
+   </requires>

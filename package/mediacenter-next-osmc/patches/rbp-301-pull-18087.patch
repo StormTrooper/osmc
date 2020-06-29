@@ -1,0 +1,534 @@
+From 8c028fe255491a5c340cf50e134511f865867c30 Mon Sep 17 00:00:00 2001
+From: phunkyfish <phunkyfish@gmail.com>
+Date: Wed, 24 Jun 2020 10:22:45 +0100
+Subject: [PATCH] [addons] allow disabled and incompatible addons to still be
+ updated
+
+---
+ xbmc/addons/AddonDatabase.cpp                 | 47 ++++++++++++---
+ xbmc/addons/AddonDatabase.h                   | 29 ++++++---
+ xbmc/addons/AddonInstaller.cpp                |  2 +-
+ xbmc/addons/AddonManager.cpp                  | 60 ++++++++++++++-----
+ xbmc/addons/AddonManager.h                    | 47 +++++++++++++--
+ xbmc/addons/ContextMenus.cpp                  |  3 +-
+ xbmc/addons/GUIDialogAddonInfo.cpp            |  2 +-
+ xbmc/addons/addoninfo/AddonInfo.h             | 11 ++++
+ xbmc/interfaces/json-rpc/AddonsOperations.cpp | 14 ++++-
+ xbmc/pvr/addons/PVRClients.cpp                |  3 +-
+ 10 files changed, 175 insertions(+), 43 deletions(-)
+
+diff --git a/xbmc/addons/AddonDatabase.cpp b/xbmc/addons/AddonDatabase.cpp
+index fcce03a77bbe..edc63e9b59b7 100644
+--- a/xbmc/addons/AddonDatabase.cpp
++++ b/xbmc/addons/AddonDatabase.cpp
+@@ -131,7 +131,7 @@ int CAddonDatabase::GetMinSchemaVersion() const
+ 
+ int CAddonDatabase::GetSchemaVersion() const
+ {
+-  return 27;
++  return 28;
+ }
+ 
+ void CAddonDatabase::CreateTables()
+@@ -165,8 +165,8 @@ void CAddonDatabase::CreateTables()
+ 
+   CLog::Log(LOGINFO, "create installed table");
+   m_pDS->exec("CREATE TABLE installed (id INTEGER PRIMARY KEY, addonID TEXT UNIQUE, "
+-      "enabled BOOLEAN, installDate TEXT, lastUpdated TEXT, lastUsed TEXT, "
+-      "origin TEXT NOT NULL DEFAULT '') \n");
++              "enabled BOOLEAN, installDate TEXT, lastUpdated TEXT, lastUsed TEXT, "
++              "disabledReason INTEGER NOT NULL DEFAULT 0, origin TEXT NOT NULL DEFAULT '') \n");
+ }
+ 
+ void CAddonDatabase::CreateAnalytics()
+@@ -218,6 +218,12 @@ void CAddonDatabase::UpdateTables(int version)
+   {
+     m_pDS->exec("ALTER TABLE addons ADD news TEXT NOT NULL DEFAULT ''");
+   }
++  if (version < 28)
++  {
++    m_pDS->exec("ALTER TABLE installed ADD disabledReason INTEGER NOT NULL DEFAULT 0");
++    // On adding this field we will use user disabled as the default reason for any disabled addons
++    m_pDS->exec("UPDATE installed SET disabledReason=1 WHERE enabled=0");
++  }
+ }
+ 
+ void CAddonDatabase::SyncInstalled(const std::set<std::string>& ids,
+@@ -862,7 +868,7 @@ bool CAddonDatabase::Search(const std::string& search, VECADDONS& addons)
+   return false;
+ }
+ 
+-bool CAddonDatabase::DisableAddon(const std::string &addonID, bool disable /* = true */)
++bool CAddonDatabase::DisableAddon(const std::string& addonID, AddonDisabledReason disabledReason)
+ {
+   try
+   {
+@@ -871,7 +877,30 @@ bool CAddonDatabase::DisableAddon(const std::string &addonID, bool disable /* =
+     if (!m_pDS)
+       return false;
+ 
+-    std::string sql = PrepareSQL("UPDATE installed SET enabled=%d WHERE addonID='%s'", disable ? 0 : 1, addonID.c_str());
++    const std::string sql =
++        PrepareSQL("UPDATE installed SET enabled=0, disabledReason=%d WHERE addonID='%s'",
++                   static_cast<int>(disabledReason), addonID.c_str());
++    m_pDS->exec(sql);
++    return true;
++  }
++  catch (...)
++  {
++    CLog::Log(LOGERROR, "%s failed on addon '%s'", __FUNCTION__, addonID.c_str());
++  }
++  return false;
++}
++
++bool CAddonDatabase::EnableAddon(const std::string& addonID)
++{
++  try
++  {
++    if (!m_pDB)
++      return false;
++    if (!m_pDS)
++      return false;
++
++    const std::string sql = PrepareSQL(
++        "UPDATE installed SET enabled=1, disabledReason=0 WHERE addonID='%s'", addonID.c_str());
+     m_pDS->exec(sql);
+     return true;
+   }
+@@ -891,7 +920,7 @@ bool CAddonDatabase::BreakAddon(const std::string &addonID, const std::string& r
+                                    addonID.c_str(), reason.c_str()));
+ }
+ 
+-bool CAddonDatabase::GetDisabled(std::set<std::string>& addons)
++bool CAddonDatabase::GetDisabled(std::map<std::string, AddonDisabledReason>& addons)
+ {
+   try
+   {
+@@ -900,11 +929,13 @@ bool CAddonDatabase::GetDisabled(std::set<std::string>& addons)
+     if (!m_pDS)
+       return false;
+ 
+-    std::string sql = PrepareSQL("SELECT addonID FROM installed WHERE enabled=0");
++    const std::string sql =
++        PrepareSQL("SELECT addonID, disabledReason FROM installed WHERE enabled=0");
+     m_pDS->query(sql);
+     while (!m_pDS->eof())
+     {
+-      addons.insert(m_pDS->fv(0).get_asString());
++      addons.insert({m_pDS->fv(0).get_asString(),
++                     static_cast<AddonDisabledReason>(m_pDS->fv(1).get_asInt())});
+       m_pDS->next();
+     }
+     m_pDS->close();
+diff --git a/xbmc/addons/AddonDatabase.h b/xbmc/addons/AddonDatabase.h
+index fd65b55cac6f..6c320d686584 100644
+--- a/xbmc/addons/AddonDatabase.h
++++ b/xbmc/addons/AddonDatabase.h
+@@ -29,8 +29,8 @@ class CAddonDatabase : public CDatabase
+   /*! \brief Get an addon with a specific version and repository. */
+   bool GetAddon(const std::string& addonID, const ADDON::AddonVersion& version, const std::string& repoId, ADDON::AddonPtr& addon);
+ 
+-  /*! Get the addon IDs that has been set to disabled */
+-  bool GetDisabled(std::set<std::string>& addons);
++  /*! Get the addon IDs that have been set to disabled */
++  bool GetDisabled(std::map<std::string, ADDON::AddonDisabledReason>& addons);
+ 
+   /*! @deprecated: use FindByAddonId */
+   bool GetAvailableVersions(const std::string& addonId,
+@@ -73,13 +73,24 @@ class CAddonDatabase : public CDatabase
+ 
+   bool Search(const std::string& search, ADDON::VECADDONS& items);
+ 
+-  /*! \brief Disable an addon.
+-   Sets a flag that this addon has been disabled.  If disabled, it is usually still available on disk.
+-   \param addonID id of the addon to disable
+-   \param disable whether to enable or disable.  Defaults to true (disable)
+-   \return true on success, false on failure
+-   \sa IsAddonDisabled, HasDisabledAddons */
+-  bool DisableAddon(const std::string &addonID, bool disable = true);
++  /*!
++   * \brief Disable an addon.
++   * Sets a flag that this addon has been disabled.  If disabled, it is usually still available on
++   * disk.
++   * \param addonID id of the addon to disable
++   * \param disabledReason the reason why the addon is being disabled
++   * \return true on success, false on failure
++   * \sa IsAddonDisabled, HasDisabledAddons, EnableAddon
++   */
++  bool DisableAddon(const std::string& addonID, ADDON::AddonDisabledReason disabledReason);
++
++  /*! \brief Enable an addon.
++   * Enables an addon that has previously been disabled
++   * \param addonID id of the addon to enable
++   * \return true on success, false on failure
++   * \sa DisableAddon, IsAddonDisabled, HasDisabledAddons
++   */
++  bool EnableAddon(const std::string& addonID);
+ 
+   /*! \brief Mark an addon as broken
+    Sets a flag that this addon has been marked as broken in the repository.
+diff --git a/xbmc/addons/AddonInstaller.cpp b/xbmc/addons/AddonInstaller.cpp
+index 289cc1e1b735..f98978fa6288 100644
+--- a/xbmc/addons/AddonInstaller.cpp
++++ b/xbmc/addons/AddonInstaller.cpp
+@@ -656,7 +656,7 @@ bool CAddonInstallJob::DoWork()
+   if (m_isAutoUpdate && m_addon->IsBroken())
+   {
+     CLog::Log(LOGDEBUG, "CAddonInstallJob[%s]: auto-disabling due to being marked as broken", m_addon->ID().c_str());
+-    CServiceBroker::GetAddonMgr().DisableAddon(m_addon->ID());
++    CServiceBroker::GetAddonMgr().DisableAddon(m_addon->ID(), AddonDisabledReason::USER);
+     CServiceBroker::GetEventLog().Add(EventPtr(new CAddonManagementEvent(m_addon, 24094)), true, false);
+   }
+ 
+diff --git a/xbmc/addons/AddonManager.cpp b/xbmc/addons/AddonManager.cpp
+index ad3a89075b21..564f871e5158 100644
+--- a/xbmc/addons/AddonManager.cpp
++++ b/xbmc/addons/AddonManager.cpp
+@@ -223,7 +223,7 @@ VECADDONS CAddonMgr::GetAvailableUpdates() const
+       last_versions[addon->ID()] = std::move(addon);
+   }
+ 
+-  GetAddons(installed);
++  GetAddonsForUpdate(installed);
+   for (const auto& addon : installed)
+   {
+     const auto& remote = last_versions.find(addon->ID());
+@@ -239,6 +239,11 @@ bool CAddonMgr::HasAvailableUpdates()
+   return !GetAvailableUpdates().empty();
+ }
+ 
++bool CAddonMgr::GetAddonsForUpdate(VECADDONS& addons) const
++{
++  return GetAddonsInternal(ADDON_UNKNOWN, addons, true, true);
++}
++
+ bool CAddonMgr::GetAddons(VECADDONS& addons) const
+ {
+   return GetAddonsInternal(ADDON_UNKNOWN, addons, true);
+@@ -323,7 +328,10 @@ bool CAddonMgr::FindInstallableById(const std::string& addonId, AddonPtr& result
+   return true;
+ }
+ 
+-bool CAddonMgr::GetAddonsInternal(const TYPE& type, VECADDONS& addons, bool enabledOnly) const
++bool CAddonMgr::GetAddonsInternal(const TYPE& type,
++                                  VECADDONS& addons,
++                                  bool enabledOnly,
++                                  bool checkIncompatible) const
+ {
+   CSingleLock lock(m_critSection);
+ 
+@@ -332,7 +340,10 @@ bool CAddonMgr::GetAddonsInternal(const TYPE& type, VECADDONS& addons, bool enab
+     if (type != ADDON_UNKNOWN && !addonInfo.second->HasType(type))
+       continue;
+ 
+-    if (enabledOnly && IsAddonDisabled(addonInfo.second->ID()))
++    if (enabledOnly &&
++        ((!checkIncompatible && IsAddonDisabled(addonInfo.second->ID())) ||
++         (checkIncompatible &&
++          IsAddonDisabledExcept(addonInfo.second->ID(), AddonDisabledReason::INCOMPATIBLE))))
+       continue;
+ 
+     //FIXME: hack for skipping special dependency addons (xbmc.python etc.).
+@@ -392,7 +403,7 @@ std::vector<std::string> CAddonMgr::DisableIncompatibleAddons(
+       CLog::Log(LOGWARNING, "ADDON: failed to unset {}", addon->ID());
+       continue;
+     }
+-    if (!DisableAddon(addon->ID()))
++    if (!DisableAddon(addon->ID(), AddonDisabledReason::INCOMPATIBLE))
+     {
+       CLog::Log(LOGWARNING, "ADDON: failed to disable {}", addon->ID());
+     }
+@@ -532,13 +543,13 @@ bool CAddonMgr::FindAddons()
+   m_installedAddons = std::move(installedAddons);
+ 
+   // Reload caches
+-  std::set<std::string> tmp;
+-  m_database.GetDisabled(tmp);
+-  m_disabled = std::move(tmp);
++  std::map<std::string, AddonDisabledReason> tmpDisabled;
++  m_database.GetDisabled(tmpDisabled);
++  m_disabled = std::move(tmpDisabled);
+ 
+-  tmp.clear();
+-  m_database.GetBlacklisted(tmp);
+-  m_updateBlacklist = std::move(tmp);
++  std::set<std::string> tmpBlacklist;
++  m_database.GetBlacklisted(tmpBlacklist);
++  m_updateBlacklist = std::move(tmpBlacklist);
+ 
+   return true;
+ }
+@@ -659,16 +670,16 @@ static void ResolveDependencies(const std::string& addonId, std::vector<std::str
+   }
+ }
+ 
+-bool CAddonMgr::DisableAddon(const std::string& id)
++bool CAddonMgr::DisableAddon(const std::string& id, AddonDisabledReason disabledReason)
+ {
+   CSingleLock lock(m_critSection);
+   if (!CanAddonBeDisabled(id))
+     return false;
+   if (m_disabled.find(id) != m_disabled.end())
+     return true; //already disabled
+-  if (!m_database.DisableAddon(id))
++  if (!m_database.DisableAddon(id, disabledReason))
+     return false;
+-  if (!m_disabled.insert(id).second)
++  if (!m_disabled.emplace(id, disabledReason).second)
+     return false;
+ 
+   //success
+@@ -701,7 +712,7 @@ bool CAddonMgr::EnableSingle(const std::string& id)
+     return false;
+   }
+ 
+-  if (!m_database.DisableAddon(id, false))
++  if (!m_database.EnableAddon(id))
+     return false;
+   m_disabled.erase(id);
+ 
+@@ -734,6 +745,14 @@ bool CAddonMgr::IsAddonDisabled(const std::string& ID) const
+   return m_disabled.find(ID) != m_disabled.end();
+ }
+ 
++bool CAddonMgr::IsAddonDisabledExcept(const std::string& ID,
++                                      AddonDisabledReason disabledReason) const
++{
++  CSingleLock lock(m_critSection);
++  const auto disabledAddon = m_disabled.find(ID);
++  return disabledAddon != m_disabled.end() && disabledAddon->second != disabledReason;
++}
++
+ bool CAddonMgr::CanAddonBeDisabled(const std::string& ID)
+ {
+   if (ID.empty())
+@@ -926,16 +945,25 @@ bool CAddonMgr::GetAddonInfos(AddonInfos& addonInfos, bool enabledOnly, TYPE typ
+ }
+ 
+ bool CAddonMgr::GetDisabledAddonInfos(std::vector<AddonInfoPtr>& addonInfos, TYPE type)
++{
++  return GetDisabledAddonInfos(addonInfos, type, AddonDisabledReason::NONE);
++}
++
++bool CAddonMgr::GetDisabledAddonInfos(std::vector<AddonInfoPtr>& addonInfos,
++                                      TYPE type,
++                                      AddonDisabledReason disabledReason)
+ {
+   CSingleLock lock(m_critSection);
+ 
+   bool forUnknown = type == ADDON_UNKNOWN;
+   for (const auto& info : m_installedAddons)
+   {
+-    if (m_disabled.find(info.first) == m_disabled.end())
++    const auto disabledAddon = m_disabled.find(info.first);
++    if (disabledAddon == m_disabled.end())
+       continue;
+ 
+-    if (info.second->MainType() != ADDON_UNKNOWN && (forUnknown || info.second->HasType(type)))
++    if (info.second->MainType() != ADDON_UNKNOWN && (forUnknown || info.second->HasType(type)) &&
++        (disabledReason == AddonDisabledReason::NONE || disabledReason == disabledAddon->second))
+       addonInfos.emplace_back(info.second);
+   }
+ 
+diff --git a/xbmc/addons/AddonManager.h b/xbmc/addons/AddonManager.h
+index bfb6e3c7901c..fdc81aea3fd1 100644
+--- a/xbmc/addons/AddonManager.h
++++ b/xbmc/addons/AddonManager.h
+@@ -14,6 +14,7 @@
+ #include "threads/CriticalSection.h"
+ #include "utils/EventStream.h"
+ 
++#include <map>
+ #include <mutex>
+ 
+ namespace ADDON
+@@ -79,6 +80,9 @@ namespace ADDON
+ 
+     bool HasInstalledAddons(const TYPE &type);
+ 
++    /*! Returns all installed, enabled and incompatible (and disabled) add-ons. */
++    bool GetAddonsForUpdate(VECADDONS& addons) const;
++
+     /*! Returns all installed, enabled add-ons. */
+     bool GetAddons(VECADDONS& addons) const;
+ 
+@@ -173,7 +177,7 @@ namespace ADDON
+     void OnPostUnInstall(const std::string& id);
+ 
+     /*! \brief Disable an addon. Returns true on success, false on failure. */
+-    bool DisableAddon(const std::string& ID);
++    bool DisableAddon(const std::string& ID, AddonDisabledReason disabledReason);
+ 
+     /*! \brief Enable an addon. Returns true on success, false on failure. */
+     bool EnableAddon(const std::string& ID);
+@@ -185,6 +189,17 @@ namespace ADDON
+      */
+     bool IsAddonDisabled(const std::string& ID) const;
+ 
++    /*!
++     * @brief Check whether an addon has been disabled via DisableAddon except for a particular
++     * reason In case the disabled cache does not know about the current state the database routine
++     * will be used.
++     * @param[in] ID id of the addon
++     * @param[in] disabledReason the reason that will be an exception to being disabled
++     * @return true if the addon was disabled except for the specified reason
++     * @sa DisableAddon
++     */
++    bool IsAddonDisabledExcept(const std::string& ID, AddonDisabledReason disabledReason) const;
++
+     /* \brief Checks whether an addon can be disabled via DisableAddon.
+      \param ID id of the addon
+      \sa DisableAddon
+@@ -266,8 +281,7 @@ namespace ADDON
+     bool GetAddonInfos(AddonInfos& addonInfos, bool enabledOnly, TYPE type) const;
+ 
+     /*!
+-     * @brief Get a list of disabled add-on's with info's for the on system
+-     * available ones.
++     * @brief Get a list of disabled add-on's with info's
+      *
+      * @param[out] addonInfos list where finded addon information becomes stored
+      * @param[in] type        The requested type, with "ADDON_UNKNOWN"
+@@ -279,6 +293,26 @@ namespace ADDON
+      */
+     bool GetDisabledAddonInfos(std::vector<AddonInfoPtr>& addonInfos, TYPE type);
+ 
++    /*!
++     * @brief Get a list of disabled add-on's with info's for the on system
++     * available ones with a specific disabled reason.
++     *
++     * @param[out] addonInfos list where finded addon information becomes stored
++     * @param[in] type        The requested type, with "ADDON_UNKNOWN"
++     *                        are all add-on types given back who match the case
++     *                        with value before.
++     *                        If a type id becomes added are only add-ons
++     *                        returned who match them. Default is for all types.
++     * @param[in] disabledReason To get all disabled addons use the value
++     *                           "AddonDiasbledReason::NONE". If any other value
++     *                           is supplied only addons with that reason will be
++     *                           returned.
++     * @return true if the list contains entries
++     */
++    bool GetDisabledAddonInfos(std::vector<AddonInfoPtr>& addonInfos,
++                               TYPE type,
++                               AddonDisabledReason disabledReason);
++
+     const AddonInfoPtr GetAddonInfo(const std::string& id, TYPE type = ADDON_UNKNOWN) const;
+ 
+     /*!
+@@ -295,7 +329,10 @@ namespace ADDON
+ 
+     VECADDONS m_updateableAddons;
+ 
+-    bool GetAddonsInternal(const TYPE& type, VECADDONS& addons, bool enabledOnly) const;
++    bool GetAddonsInternal(const TYPE& type,
++                           VECADDONS& addons,
++                           bool enabledOnly,
++                           bool checkIncompatible = false) const;
+     bool EnableSingle(const std::string& id);
+ 
+     void FindAddons(ADDON_INFO_LIST& addonmap, const std::string& path);
+@@ -327,7 +364,7 @@ namespace ADDON
+     // (migration will install any available update anyway)
+     mutable std::mutex m_installAddonsMutex;
+ 
+-    std::set<std::string> m_disabled;
++    std::map<std::string, AddonDisabledReason> m_disabled;
+     std::set<std::string> m_updateBlacklist;
+     static std::map<TYPE, IAddonMgrCallback*> m_managers;
+     mutable CCriticalSection m_critSection;
+diff --git a/xbmc/addons/ContextMenus.cpp b/xbmc/addons/ContextMenus.cpp
+index 2e4ea07ed1d7..e5335e181adf 100644
+--- a/xbmc/addons/ContextMenus.cpp
++++ b/xbmc/addons/ContextMenus.cpp
+@@ -74,6 +74,7 @@ bool CDisableAddon::IsVisible(const CFileItem& item) const
+ 
+ bool CDisableAddon::Execute(const CFileItemPtr& item) const
+ {
+-  return CServiceBroker::GetAddonMgr().DisableAddon(item->GetAddonInfo()->ID());
++  return CServiceBroker::GetAddonMgr().DisableAddon(item->GetAddonInfo()->ID(),
++                                                    AddonDisabledReason::USER);
+ }
+ }
+diff --git a/xbmc/addons/GUIDialogAddonInfo.cpp b/xbmc/addons/GUIDialogAddonInfo.cpp
+index 8b5643e68a60..a11490df3b8d 100644
+--- a/xbmc/addons/GUIDialogAddonInfo.cpp
++++ b/xbmc/addons/GUIDialogAddonInfo.cpp
+@@ -451,7 +451,7 @@ void CGUIDialogAddonInfo::OnEnableDisable()
+     if (PromptIfDependency(24075, 24091))
+       return; //required. can't disable
+ 
+-    CServiceBroker::GetAddonMgr().DisableAddon(m_localAddon->ID());
++    CServiceBroker::GetAddonMgr().DisableAddon(m_localAddon->ID(), AddonDisabledReason::USER);
+   }
+   else
+     CServiceBroker::GetAddonMgr().EnableAddon(m_localAddon->ID());
+diff --git a/xbmc/addons/addoninfo/AddonInfo.h b/xbmc/addons/addoninfo/AddonInfo.h
+index 355703ce34b5..59f2b30c5b1b 100644
+--- a/xbmc/addons/addoninfo/AddonInfo.h
++++ b/xbmc/addons/addoninfo/AddonInfo.h
+@@ -26,6 +26,17 @@ class CAddonInfo;
+ typedef std::shared_ptr<CAddonInfo> AddonInfoPtr;
+ typedef std::vector<AddonInfoPtr> AddonInfos;
+ 
++enum class AddonDisabledReason
++{
++  /// @brief Special reason for returning all disabled addons.
++  ///
++  /// Only used as an actual value when an addon is enabled.
++  NONE = 0,
++  USER = 1,
++  INCOMPATIBLE = 2,
++  PERMANENT_FAILURE = 3
++};
++
+ struct DependencyInfo
+ {
+   std::string id;
+diff --git a/xbmc/interfaces/json-rpc/AddonsOperations.cpp b/xbmc/interfaces/json-rpc/AddonsOperations.cpp
+index 52d04a268930..9ac5e164d3f2 100644
+--- a/xbmc/interfaces/json-rpc/AddonsOperations.cpp
++++ b/xbmc/interfaces/json-rpc/AddonsOperations.cpp
+@@ -150,15 +150,27 @@ JSONRPC_STATUS CAddonsOperations::SetAddonEnabled(const std::string &method, ITr
+     return InvalidParams;
+ 
+   bool disabled = false;
++  AddonDisabledReason disabledReason;
+   if (parameterObject["enabled"].isBoolean())
++  {
+     disabled = !parameterObject["enabled"].asBoolean();
++    disabledReason =
++        static_cast<AddonDisabledReason>(parameterObject["disabledReason"].asInteger());
++  }
+   // we need to toggle the current disabled state of the addon
+   else if (parameterObject["enabled"].isString())
++  {
+     disabled = !CServiceBroker::GetAddonMgr().IsAddonDisabled(id);
++    disabledReason =
++        static_cast<AddonDisabledReason>(parameterObject["disabledReason"].asInteger());
++  }
+   else
++  {
+     return InvalidParams;
++  }
+ 
+-  bool success = disabled ? CServiceBroker::GetAddonMgr().DisableAddon(id) : CServiceBroker::GetAddonMgr().EnableAddon(id);
++  bool success = disabled ? CServiceBroker::GetAddonMgr().DisableAddon(id, disabledReason)
++                          : CServiceBroker::GetAddonMgr().EnableAddon(id);
+   return success ? ACK : InvalidParams;
+ }
+ 
+diff --git a/xbmc/pvr/addons/PVRClients.cpp b/xbmc/pvr/addons/PVRClients.cpp
+index ceebbf8ec95c..d29a4492fc25 100644
+--- a/xbmc/pvr/addons/PVRClients.cpp
++++ b/xbmc/pvr/addons/PVRClients.cpp
+@@ -160,7 +160,8 @@ void CPVRClients::UpdateAddons(const std::string& changedAddonId /*= ""*/)
+         CLog::LogF(LOGERROR, "Failed to create add-on %s, status = %d", addon.first->Name().c_str(), status);
+         if (status == ADDON_STATUS_PERMANENT_FAILURE)
+         {
+-          CServiceBroker::GetAddonMgr().DisableAddon(addon.first->ID());
++          CServiceBroker::GetAddonMgr().DisableAddon(addon.first->ID(),
++                                                     AddonDisabledReason::PERMANENT_FAILURE);
+           CJobManager::GetInstance().AddJob(new CPVREventLogJob(true, true, addon.first->Name(), g_localizeStrings.Get(24070), addon.first->Icon()), nullptr);
+         }
+       }

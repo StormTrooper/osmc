@@ -1,0 +1,1720 @@
+From e0c4fff6ac7b7fd2a17ed18f79c06efdecd49eab Mon Sep 17 00:00:00 2001
+From: thexai <58434170+thexai@users.noreply.github.com>
+Date: Fri, 24 Apr 2020 10:44:05 +0200
+Subject: [PATCH] Windows HDR passthrough support
+
+---
+ system/keymaps/keyboard.xml                   |   1 +
+ xbmc/Application.cpp                          |  80 +++--
+ xbmc/CMakeLists.txt                           |   1 +
+ xbmc/HDRStatus.h                              |  17 ++
+ .../VideoPlayer/DVDCodecs/Video/DXVA.cpp      |  50 ++--
+ .../VideoRenderers/HwDecRender/DXVAHD.cpp     | 100 +++----
+ .../VideoRenderers/HwDecRender/DXVAHD.h       |   3 +-
+ .../VideoShaders/WinVideoFilter.cpp           |   3 +-
+ .../VideoRenderers/windows/RendererBase.cpp   | 151 +++++++++-
+ .../VideoRenderers/windows/RendererBase.h     |  26 +-
+ .../VideoRenderers/windows/RendererDXVA.cpp   |   9 +-
+ .../windows/RendererShaders.cpp               |   9 +-
+ xbmc/input/actions/ActionIDs.h                |   2 +
+ xbmc/input/actions/ActionTranslator.cpp       |   3 +
+ xbmc/platform/win32/WIN32Util.cpp             | 283 ++++++++++++++++++
+ xbmc/platform/win32/WIN32Util.h               |   7 +
+ xbmc/rendering/dx/DeviceResources.cpp         | 181 ++++++++++-
+ xbmc/rendering/dx/DeviceResources.h           |  26 +-
+ xbmc/settings/AdvancedSettings.cpp            |   3 +
+ xbmc/settings/AdvancedSettings.h              |   1 +
+ xbmc/windowing/WinSystem.h                    |   3 +
+ xbmc/windowing/win10/WinSystemWin10.h         |   1 +
+ xbmc/windowing/win10/WinSystemWin10DX.cpp     |  32 ++
+ xbmc/windowing/win10/WinSystemWin10DX.h       |  11 +
+ xbmc/windowing/windows/WinSystemWin32.h       |   1 +
+ xbmc/windowing/windows/WinSystemWin32DX.cpp   |  31 ++
+ xbmc/windowing/windows/WinSystemWin32DX.h     |  11 +
+ 27 files changed, 906 insertions(+), 140 deletions(-)
+ create mode 100644 xbmc/HDRStatus.h
+
+diff --git a/system/keymaps/keyboard.xml b/system/keymaps/keyboard.xml
+index b1638067de0c..5cb986f1b6bb 100644
+--- a/system/keymaps/keyboard.xml
++++ b/system/keymaps/keyboard.xml
+@@ -167,6 +167,7 @@
+       <k mod="ctrl,shift">ReloadKeymaps</k>
+       <d mod="ctrl,shift">ToggleDebug</d>
+       <r mod="ctrl,shift">ToggleDirtyRegionVisualization</r>
++      <f11>HDRToggle</f11>
+     </keyboard>
+   </global>
+   <LoginScreen>
+diff --git a/xbmc/Application.cpp b/xbmc/Application.cpp
+index b0c31db9eabf..a31109ca3da2 100644
+--- a/xbmc/Application.cpp
++++ b/xbmc/Application.cpp
+@@ -6,42 +6,45 @@
+  *  See LICENSES/README.md for more information.
+  */
+ 
+-#include "network/EventServer.h"
+-#include "network/Network.h"
+-#include "threads/SystemClock.h"
+ #include "Application.h"
+-#include "AppParamParser.h"
++
+ #include "AppInboundProtocol.h"
+-#include "dialogs/GUIDialogBusy.h"
+-#include "events/EventLog.h"
+-#include "events/NotificationEvent.h"
+-#include "interfaces/builtins/Builtins.h"
+-#include "utils/JobManager.h"
+-#include "utils/Variant.h"
++#include "AppParamParser.h"
++#include "Autorun.h"
++#include "GUIInfoManager.h"
++#include "HDRStatus.h"
+ #include "LangInfo.h"
+-#include "utils/Screenshot.h"
+-#include "Util.h"
++#include "PlayListPlayer.h"
+ #include "URL.h"
+-#include "guilib/GUIComponent.h"
+-#include "guilib/TextureManager.h"
+-#include "cores/IPlayer.h"
++#include "Util.h"
++#include "addons/Skin.h"
++#include "addons/VFSEntry.h"
+ #include "cores/AudioEngine/Engines/ActiveAE/ActiveAE.h"
++#include "cores/IPlayer.h"
+ #include "cores/playercorefactory/PlayerCoreFactory.h"
+-#include "PlayListPlayer.h"
+-#include "Autorun.h"
+-#include "video/Bookmark.h"
+-#include "video/VideoLibraryQueue.h"
+-#include "music/MusicLibraryQueue.h"
++#include "dialogs/GUIDialogBusy.h"
++#include "dialogs/GUIDialogKaiToast.h"
++#include "events/EventLog.h"
++#include "events/NotificationEvent.h"
++#include "guilib/GUIColorManager.h"
++#include "guilib/GUIComponent.h"
+ #include "guilib/GUIControlProfiler.h"
+-#include "utils/LangCodeExpander.h"
+-#include "GUIInfoManager.h"
+-#include "playlists/PlayListFactory.h"
+ #include "guilib/GUIFontManager.h"
+-#include "guilib/GUIColorManager.h"
+ #include "guilib/StereoscopicsManager.h"
+-#include "addons/Skin.h"
+-#include "addons/VFSEntry.h"
++#include "guilib/TextureManager.h"
++#include "interfaces/builtins/Builtins.h"
+ #include "interfaces/generic/ScriptInvocationManager.h"
++#include "music/MusicLibraryQueue.h"
++#include "network/EventServer.h"
++#include "network/Network.h"
++#include "playlists/PlayListFactory.h"
++#include "threads/SystemClock.h"
++#include "utils/JobManager.h"
++#include "utils/LangCodeExpander.h"
++#include "utils/Screenshot.h"
++#include "utils/Variant.h"
++#include "video/Bookmark.h"
++#include "video/VideoLibraryQueue.h"
+ #ifdef HAS_PYTHON
+ #include "interfaces/python/XBPython.h"
+ #endif
+@@ -497,6 +500,12 @@ bool CApplication::Create(const CAppParamParser &params)
+             (CWIN32Util::IsCurrentUserLocalAdministrator() == TRUE) ? "administrator"
+                                                                     : "restricted");
+   CLog::Log(LOGINFO, "Aero is %s", (g_sysinfo.IsAeroDisabled() == true) ? "disabled" : "enabled");
++  HDR_STATUS hdrStatus = CWIN32Util::GetWindowsHDRStatus();
++  if (hdrStatus == HDR_STATUS::HDR_UNSUPPORTED)
++    CLog::Log(LOGINFO, "Display is not HDR capable or cannot be detected");
++  else
++    CLog::Log(LOGINFO, "Display HDR capable is detected and Windows HDR switch is %s",
++              (hdrStatus == HDR_STATUS::HDR_ON) ? "ON" : "OFF");
+ #endif
+ #if defined(TARGET_ANDROID)
+   CLog::Log(
+@@ -1656,6 +1665,25 @@ bool CApplication::OnAction(const CAction &action)
+     CScreenShot::TakeScreenshot();
+     return true;
+   }
++  // Display HDR : toggle HDR on/off
++  if (action.GetID() == ACTION_HDR_TOGGLE)
++  {
++    HDR_STATUS hdrStatus = CServiceBroker::GetWinSystem()->ToggleHDR();
++
++    if (hdrStatus == HDR_STATUS::HDR_OFF)
++    {
++      CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::eMessageType::Info, "HDR is OFF",
++                                            "Display HDR is Off", TOAST_DISPLAY_TIME, true,
++                                            TOAST_DISPLAY_TIME);
++    }
++    else if (hdrStatus == HDR_STATUS::HDR_ON)
++    {
++      CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::eMessageType::Info, "HDR is ON",
++                                            "Display HDR is On", TOAST_DISPLAY_TIME, true,
++                                            TOAST_DISPLAY_TIME);
++    }
++    return true;
++  }
+   // built in functions : execute the built-in
+   if (action.GetID() == ACTION_BUILT_IN_FUNCTION)
+   {
+diff --git a/xbmc/CMakeLists.txt b/xbmc/CMakeLists.txt
+index 863fb854bdcb..a68d1a56a9f8 100644
+--- a/xbmc/CMakeLists.txt
++++ b/xbmc/CMakeLists.txt
+@@ -61,6 +61,7 @@ set(HEADERS AppParamParser.h
+             GUILargeTextureManager.h
+             GUIPassword.h
+             GUIUserMessages.h
++            HDRStatus.h
+             IFileItemListModifier.h
+             IProgressCallback.h
+             InfoScanner.h
+diff --git a/xbmc/HDRStatus.h b/xbmc/HDRStatus.h
+new file mode 100644
+index 000000000000..b500351e9bbf
+--- /dev/null
++++ b/xbmc/HDRStatus.h
+@@ -0,0 +1,17 @@
++/*
++ *  Copyright (C) 2005-2020 Team Kodi
++ *  This file is part of Kodi - https://kodi.tv
++ *
++ *  SPDX-License-Identifier: GPL-2.0-or-later
++ *  See LICENSES/README.md for more information.
++ */
++
++#pragma once
++
++enum class HDR_STATUS : int
++{
++  HDR_TOGGLE_FAILED = -1,
++  HDR_UNSUPPORTED = 0,
++  HDR_OFF = 1,
++  HDR_ON = 2
++};
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DXVA.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DXVA.cpp
+index eba164c89b29..1c49fdfca9a8 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DXVA.cpp
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DXVA.cpp
+@@ -281,32 +281,38 @@ bool CContext::CreateContext()
+   ComPtr<ID3D11DeviceContext> pD3DDeviceContext;
+   m_sharingAllowed = DX::DeviceResources::Get()->DoesTextureSharingWork();
+ 
++  // Workaround for Nvidia stuttering on 4K HDR playback
++  // Some tests/feedback on Windows 10 2004 / NV driver 446.14
++  // Not needed: GTX 1650, GTX 1060, ...
++  // Needed: RTX 2080 Ti, ...
++  if (m_sharingAllowed &&
++      CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_disableDXVAdiscreteDecoding)
++  {
++    m_sharingAllowed = false;
++    CLog::LogF(LOGWARNING, "disabled discrete d3d11va device for decoding due advancedsettings "
++                           "option 'disableDXVAdiscretedecoder'.");
++  }
++
+   if (m_sharingAllowed)
+   {
+     CLog::LogF(LOGWARNING, "creating discrete d3d11va device for decoding.");
+ 
+-    D3D_FEATURE_LEVEL featureLevels[] =
+-    {
+-      D3D_FEATURE_LEVEL_11_1,
+-      D3D_FEATURE_LEVEL_11_0,
+-      D3D_FEATURE_LEVEL_10_1,
+-      D3D_FEATURE_LEVEL_10_0,
+-      D3D_FEATURE_LEVEL_9_3,
+-      D3D_FEATURE_LEVEL_9_2,
+-      D3D_FEATURE_LEVEL_9_1
+-    };
+-
+-    hr = D3D11CreateDevice(
+-        DX::DeviceResources::Get()->GetAdapter(),
+-        D3D_DRIVER_TYPE_UNKNOWN,
+-        nullptr,
+-        D3D11_CREATE_DEVICE_VIDEO_SUPPORT,
+-        featureLevels,
+-        ARRAYSIZE(featureLevels),
+-        D3D11_SDK_VERSION,
+-        &pD3DDevice,
+-        nullptr,
+-        &pD3DDeviceContext);
++    std::vector<D3D_FEATURE_LEVEL> featureLevels;
++    if (CSysInfo::IsWindowsVersionAtLeast(CSysInfo::WindowsVersionWin10))
++      featureLevels.push_back(D3D_FEATURE_LEVEL_12_0);
++    if (CSysInfo::IsWindowsVersionAtLeast(CSysInfo::WindowsVersionWin8))
++      featureLevels.push_back(D3D_FEATURE_LEVEL_11_1);
++    featureLevels.push_back(D3D_FEATURE_LEVEL_11_0);
++    featureLevels.push_back(D3D_FEATURE_LEVEL_10_1);
++    featureLevels.push_back(D3D_FEATURE_LEVEL_10_0);
++    featureLevels.push_back(D3D_FEATURE_LEVEL_9_3);
++    featureLevels.push_back(D3D_FEATURE_LEVEL_9_2);
++    featureLevels.push_back(D3D_FEATURE_LEVEL_9_1);
++
++    hr = D3D11CreateDevice(DX::DeviceResources::Get()->GetAdapter(), D3D_DRIVER_TYPE_UNKNOWN,
++                           nullptr, D3D11_CREATE_DEVICE_VIDEO_SUPPORT, featureLevels.data(),
++                           featureLevels.size(), D3D11_SDK_VERSION, &pD3DDevice, nullptr,
++                           &pD3DDeviceContext);
+ 
+     if (SUCCEEDED(hr))
+     {
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DXVAHD.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DXVAHD.cpp
+index dab2be647596..5c18398157ca 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DXVAHD.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DXVAHD.cpp
+@@ -12,17 +12,16 @@
+ #define DEFAULT_STREAM_INDEX (0)
+ 
+ #include "DXVAHD.h"
+-#include "platform/win32/WIN32Util.h"
+-#include "rendering/dx/RenderContext.h"
+-#include "rendering/dx/DeviceResources.h"
+-#include "VideoRenderers/RenderManager.h"
++
+ #include "VideoRenderers/RenderFlags.h"
++#include "VideoRenderers/RenderManager.h"
+ #include "VideoRenderers/windows/RendererBase.h"
++#include "rendering/dx/RenderContext.h"
+ #include "utils/log.h"
+ 
+ #include <Windows.h>
+-#include <dxgi1_5.h>
+ #include <d3d11_4.h>
++#include <dxgi1_5.h>
+ 
+ using namespace DXVA;
+ using namespace Microsoft::WRL;
+@@ -36,12 +35,6 @@ do { \
+   } \
+ } while(0);
+ 
+-template<typename T>
+-T from_rational(uint64_t default_factor, AVRational rat)
+-{
+-  return static_cast<T>(default_factor * rat.num / rat.den);
+-}
+-
+ CProcessorHD::CProcessorHD()
+ {
+   DX::Windowing()->Register(this);
+@@ -146,7 +139,7 @@ bool CProcessorHD::InitProcessor()
+   CLog::LogF(LOGDEBUG, "video processor has %#x input format caps.", m_vcaps.InputFormatCaps);
+   CLog::LogF(LOGDEBUG, "video processor has %d max input streams.", m_vcaps.MaxInputStreams);
+   CLog::LogF(LOGDEBUG, "video processor has %d max stream states.", m_vcaps.MaxStreamStates);
+-  if ((m_bSupportHDR10 = m_vcaps.FeatureCaps & D3D11_VIDEO_PROCESSOR_FEATURE_CAPS_METADATA_HDR10))
++  if (m_vcaps.FeatureCaps & D3D11_VIDEO_PROCESSOR_FEATURE_CAPS_METADATA_HDR10)
+     CLog::LogF(LOGDEBUG, "video processor supports HDR10.");
+ 
+   if (0 != (m_vcaps.FeatureCaps & D3D11_VIDEO_PROCESSOR_FEATURE_CAPS_LEGACY))
+@@ -331,7 +324,7 @@ ID3D11VideoProcessorInputView* CProcessorHD::GetInputView(CRenderBuffer* view) c
+   return inputView.Detach();
+ }
+ 
+-DXGI_COLOR_SPACE_TYPE CProcessorHD::GetDXGIColorSpace(CRenderBuffer* view, bool supportHDR)
++DXGI_COLOR_SPACE_TYPE CProcessorHD::GetDXGIColorSpaceSource(CRenderBuffer* view, bool supportHDR)
+ {
+   // RGB
+   if (view->color_space == AVCOL_SPC_RGB)
+@@ -364,11 +357,14 @@ DXGI_COLOR_SPACE_TYPE CProcessorHD::GetDXGIColorSpace(CRenderBuffer* view, bool
+   // UHDTV
+   if (view->primaries == AVCOL_PRI_BT2020)
+   {
+-    if (view->color_transfer == AVCOL_TRC_SMPTEST2084 && supportHDR) // HDR
++    if (view->color_transfer == AVCOL_TRC_SMPTEST2084 && supportHDR) // HDR10
+       // Could also be:
+       // DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020
+       return DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020;
+ 
++    if (view->color_transfer == AVCOL_TRC_ARIB_STD_B67) // HLG
++      return DXGI_COLOR_SPACE_YCBCR_STUDIO_GHLG_TOPLEFT_P2020;
++
+     if (view->full_range)
+       return DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P2020;
+ 
+@@ -397,6 +393,38 @@ DXGI_COLOR_SPACE_TYPE CProcessorHD::GetDXGIColorSpace(CRenderBuffer* view, bool
+   return DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709;
+ }
+ 
++DXGI_COLOR_SPACE_TYPE CProcessorHD::GetDXGIColorSpaceTarget(CRenderBuffer* view)
++{
++  DXGI_COLOR_SPACE_TYPE color;
++
++  // HDR10
++  if (view->color_transfer == AVCOL_TRC_SMPTE2084 && DX::Windowing()->IsHDROutput())
++  {
++    color = DX::Windowing()->UseLimitedColor() ? DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020
++                                               : DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
++  }
++  // HLG
++  else if (view->color_transfer == AVCOL_TRC_ARIB_STD_B67 && view->primaries == AVCOL_PRI_BT2020)
++  {
++    color = DX::Windowing()->UseLimitedColor() ? DXGI_COLOR_SPACE_YCBCR_STUDIO_GHLG_TOPLEFT_P2020
++                                               : DXGI_COLOR_SPACE_YCBCR_FULL_GHLG_TOPLEFT_P2020;
++  }
++  // Rec.2020
++  else if (view->color_transfer != AVCOL_TRC_SMPTE2084 && view->primaries == AVCOL_PRI_BT2020)
++  {
++    color = DX::Windowing()->UseLimitedColor() ? DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P2020
++                                               : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020;
++  }
++  // SRD - Default
++  else
++  {
++    color = DX::Windowing()->UseLimitedColor() ? DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709
++                                               : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
++  }
++
++  return color;
++}
++
+ bool CProcessorHD::Render(CRect src, CRect dst, ID3D11Resource* target, CRenderBuffer** views, DWORD flags, UINT frameIdx, UINT rotation, float contrast, float brightness)
+ {
+   CSingleLock lock(m_section);
+@@ -504,47 +532,15 @@ bool CProcessorHD::Render(CRect src, CRect dst, ID3D11Resource* target, CRenderB
+   ComPtr<ID3D11VideoContext1> videoCtx1;
+   if (SUCCEEDED(m_pVideoContext.As(&videoCtx1)))
+   {
+-    const DXGI_COLOR_SPACE_TYPE source_color = GetDXGIColorSpace(views[2], m_bSupportHDR10);
+-    const DXGI_COLOR_SPACE_TYPE target_color = DX::Windowing()->UseLimitedColor() 
+-                                               ? DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709 
+-                                               : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
++    const DXGI_COLOR_SPACE_TYPE sourceColor =
++        GetDXGIColorSpaceSource(views[2], DX::Windowing()->IsHDROutput());
++    const DXGI_COLOR_SPACE_TYPE targetColor = GetDXGIColorSpaceTarget(views[2]);
+ 
+-    videoCtx1->VideoProcessorSetStreamColorSpace1(m_pVideoProcessor.Get(), DEFAULT_STREAM_INDEX, source_color);
+-    videoCtx1->VideoProcessorSetOutputColorSpace1(m_pVideoProcessor.Get(), target_color);
++    videoCtx1->VideoProcessorSetStreamColorSpace1(m_pVideoProcessor.Get(), DEFAULT_STREAM_INDEX,
++                                                  sourceColor);
++    videoCtx1->VideoProcessorSetOutputColorSpace1(m_pVideoProcessor.Get(), targetColor);
+     // makes target available for processing in shaders
+     videoCtx1->VideoProcessorSetOutputShaderUsage(m_pVideoProcessor.Get(), 1);
+-
+-    if (m_bSupportHDR10)
+-    {
+-      ComPtr<ID3D11VideoContext2> videoCtx2;
+-      if (SUCCEEDED(m_pVideoContext.As(&videoCtx2)) && views[2]->hasDisplayMetadata)
+-      {
+-        DXGI_HDR_METADATA_HDR10 hdr10 = {};
+-        hdr10.WhitePoint[0] = from_rational<uint16_t>(50000, views[2]->displayMetadata.white_point[0]);
+-        hdr10.WhitePoint[1] = from_rational<uint16_t>(50000, views[2]->displayMetadata.white_point[1]);
+-        if (views[2]->displayMetadata.has_primaries)
+-        {
+-          hdr10.RedPrimary[0] = from_rational<uint16_t>(50000, views[2]->displayMetadata.display_primaries[0][0]);
+-          hdr10.RedPrimary[1] = from_rational<uint16_t>(50000, views[2]->displayMetadata.display_primaries[0][1]);
+-          hdr10.GreenPrimary[0] = from_rational<uint16_t>(50000, views[2]->displayMetadata.display_primaries[1][0]);
+-          hdr10.GreenPrimary[1] = from_rational<uint16_t>(50000, views[2]->displayMetadata.display_primaries[1][1]);
+-          hdr10.BluePrimary[0] = from_rational<uint16_t>(50000, views[2]->displayMetadata.display_primaries[2][0]);
+-          hdr10.BluePrimary[1] = from_rational<uint16_t>(50000, views[2]->displayMetadata.display_primaries[2][1]);
+-        }
+-        if (views[2]->displayMetadata.has_luminance)
+-        {
+-          hdr10.MinMasteringLuminance = from_rational<uint32_t>(10000, views[2]->displayMetadata.min_luminance);
+-          hdr10.MaxMasteringLuminance = from_rational<uint32_t>(10000, views[2]->displayMetadata.max_luminance);
+-        }
+-        if (views[2]->hasLightMetadata)
+-        {
+-          hdr10.MaxContentLightLevel = static_cast<uint16_t>(views[2]->lightMetadata.MaxCLL);
+-          hdr10.MaxFrameAverageLightLevel = static_cast<uint16_t>(views[2]->lightMetadata.MaxFALL);
+-        }
+-        videoCtx2->VideoProcessorSetStreamHDRMetaData(m_pVideoProcessor.Get(), DEFAULT_STREAM_INDEX, 
+-                                                      DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10), &hdr10);
+-      }
+-    }
+   }
+   else
+   {
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DXVAHD.h b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DXVAHD.h
+index aaecda1bb5cc..c54fec074ef6 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DXVAHD.h
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DXVAHD.h
+@@ -49,7 +49,8 @@ class CProcessorHD : public ID3DResource
+   void OnCreateDevice() override  {}
+   void OnDestroyDevice(bool) override { CSingleLock lock(m_section); UnInit(); }
+ 
+-  static DXGI_COLOR_SPACE_TYPE GetDXGIColorSpace(CRenderBuffer*, bool);
++  static DXGI_COLOR_SPACE_TYPE GetDXGIColorSpaceSource(CRenderBuffer* view, bool supportHDR);
++  static DXGI_COLOR_SPACE_TYPE GetDXGIColorSpaceTarget(CRenderBuffer* view);
+ 
+ protected:
+   bool ReInit();
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/VideoShaders/WinVideoFilter.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/VideoShaders/WinVideoFilter.cpp
+index 930ff1e39679..020fb83b83c5 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/VideoShaders/WinVideoFilter.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/VideoShaders/WinVideoFilter.cpp
+@@ -13,7 +13,6 @@
+ #include "VideoRenderers/windows/RendererBase.h"
+ #include "cores/VideoPlayer/VideoRenderers/VideoShaders/dither.h"
+ #include "filesystem/File.h"
+-#include "rendering/dx/DeviceResources.h"
+ #include "rendering/dx/RenderContext.h"
+ #include "utils/MemUtils.h"
+ #include "utils/log.h"
+@@ -228,7 +227,7 @@ bool COutputShader::Create(bool useLUT, bool useDithering, int ditherDepth, bool
+ {
+   m_useLut = useLUT;
+   m_ditherDepth = ditherDepth;
+-  m_toneMapping = toneMapping;
++  m_toneMapping = toneMapping && !DX::Windowing()->IsHDROutput();
+ 
+   CWinShader::CreateVertexBuffer(4, sizeof(Vertex));
+ 
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererBase.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererBase.cpp
+index 7b23f4b058fa..8ef572e6e045 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererBase.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererBase.cpp
+@@ -10,10 +10,13 @@
+ 
+ #include "DVDCodecs/Video/DVDVideoCodec.h"
+ #include "DVDCodecs/Video/DXVA.h"
++#include "ServiceBroker.h"
+ #include "VideoRenderers/BaseRenderer.h"
+ #include "VideoRenderers/RenderFlags.h"
+ #include "cores/VideoPlayer/Buffers/VideoBuffer.h"
+ #include "rendering/dx/RenderContext.h"
++#include "settings/Settings.h"
++#include "settings/SettingsComponent.h"
+ #include "utils/MemUtils.h"
+ #include "utils/log.h"
+ #include "windowing/GraphicContext.h"
+@@ -131,6 +134,13 @@ CRendererBase::CRendererBase(CVideoSettings& videoSettings)
+ 
+ CRendererBase::~CRendererBase()
+ {
++  if (DX::Windowing()->IsHDROutput())
++  {
++    CLog::LogF(LOGDEBUG, "Restoring SDR rendering");
++    DX::Windowing()->SetHdrColorSpace(DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709);
++    if (m_AutoSwitchHDR)
++      DX::Windowing()->ToggleHDR(); // Toggle display HDR OFF
++  }
+   Flush(false);
+ }
+ 
+@@ -163,6 +173,29 @@ bool CRendererBase::Configure(const VideoPicture& picture, float fps, unsigned o
+   m_fps = fps;
+   m_renderOrientation = orientation;
+ 
++  m_lastHdr10 = {};
++  m_iCntMetaData = 0;
++  m_HdrType = HDR_TYPE::HDR_NONE_SDR;
++  m_AutoSwitchHDR = CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(
++                        DX::Windowing()->SETTING_WINSYSTEM_IS_HDR_DISPLAY) &&
++                    DX::Windowing()->IsHDRDisplay();
++
++  // Auto switch HDR only if supported and "Settings/Player/Use HDR display capabilities" = ON
++  if (m_AutoSwitchHDR)
++  {
++    // Stream is HDR10 or HLG or Rec.2020 (wide color)
++    if (picture.color_primaries == AVCOL_PRI_BT2020)
++    {
++      if (!DX::Windowing()->IsHDROutput())
++        DX::Windowing()->ToggleHDR(); // Toggle disply HDR ON
++    }
++    else // Stream is SDR
++    {
++      if (DX::Windowing()->IsHDROutput())
++        DX::Windowing()->ToggleHDR(); // Toggle display HDR OFF
++    }
++  }
++
+   return true;
+ }
+ 
+@@ -196,6 +229,8 @@ void CRendererBase::Render(CD3DTexture& target, const CRect& sourceRect, const C
+       return;
+   }
+ 
++  ProcessHDR(buf);
++
+   if (m_viewWidth != static_cast<unsigned>(viewRect.Width()) ||
+     m_viewHeight != static_cast<unsigned>(viewRect.Height()))
+   {
+@@ -393,7 +428,7 @@ void CRendererBase::CheckVideoParameters()
+   CRenderBuffer* buf = m_renderBuffers[m_iBufferIndex];
+ 
+   bool toneMap = false;
+-  if (m_videoSettings.m_ToneMapMethod != VS_TONEMAPMETHOD_OFF)
++  if (m_videoSettings.m_ToneMapMethod != VS_TONEMAPMETHOD_OFF && !DX::Windowing()->IsHDROutput())
+   {
+     if (buf->hasLightMetadata || buf->hasDisplayMetadata && buf->displayMetadata.has_luminance)
+       toneMap = true;
+@@ -445,3 +480,117 @@ AVPixelFormat CRendererBase::GetAVFormat(DXGI_FORMAT dxgi_format)
+     return AV_PIX_FMT_NONE;
+   }
+ }
++
++DXGI_HDR_METADATA_HDR10 CRendererBase::GetDXGIHDR10MetaData(CRenderBuffer* rb)
++{
++  DXGI_HDR_METADATA_HDR10 hdr10 = {};
++
++  if (rb->displayMetadata.has_primaries)
++  {
++    hdr10.RedPrimary[0] = static_cast<uint16_t>(rb->displayMetadata.display_primaries[0][0].num);
++    hdr10.RedPrimary[1] = static_cast<uint16_t>(rb->displayMetadata.display_primaries[0][1].num);
++    hdr10.GreenPrimary[0] = static_cast<uint16_t>(rb->displayMetadata.display_primaries[1][0].num);
++    hdr10.GreenPrimary[1] = static_cast<uint16_t>(rb->displayMetadata.display_primaries[1][1].num);
++    hdr10.BluePrimary[0] = static_cast<uint16_t>(rb->displayMetadata.display_primaries[2][0].num);
++    hdr10.BluePrimary[1] = static_cast<uint16_t>(rb->displayMetadata.display_primaries[2][1].num);
++    hdr10.WhitePoint[0] = static_cast<uint16_t>(rb->displayMetadata.white_point[0].num);
++    hdr10.WhitePoint[1] = static_cast<uint16_t>(rb->displayMetadata.white_point[1].num);
++  }
++  if (rb->displayMetadata.has_luminance)
++  {
++    hdr10.MaxMasteringLuminance = static_cast<uint32_t>(rb->displayMetadata.max_luminance.num);
++    hdr10.MinMasteringLuminance = static_cast<uint32_t>(rb->displayMetadata.min_luminance.num);
++  }
++  if (rb->hasLightMetadata)
++  {
++    hdr10.MaxContentLightLevel = static_cast<uint16_t>(rb->lightMetadata.MaxCLL);
++    hdr10.MaxFrameAverageLightLevel = static_cast<uint16_t>(rb->lightMetadata.MaxFALL);
++  }
++
++  return hdr10;
++}
++
++void CRendererBase::ProcessHDR(CRenderBuffer* rb)
++{
++  if (m_AutoSwitchHDR && rb->primaries == AVCOL_PRI_BT2020 && !DX::Windowing()->IsHDROutput())
++  {
++    DX::Windowing()->ToggleHDR(); // Toggle display HDR ON
++  }
++
++  if (!DX::Windowing()->IsHDROutput())
++    return;
++
++  // HDR10
++  if (rb->color_transfer == AVCOL_TRC_SMPTE2084 && rb->primaries == AVCOL_PRI_BT2020)
++  {
++    DXGI_HDR_METADATA_HDR10 hdr10 = GetDXGIHDR10MetaData(rb);
++    if (m_HdrType == HDR_TYPE::HDR_HDR10)
++    {
++      // Only Sets HDR10 metadata if differs from previous
++      if (0 != std::memcmp(&hdr10, &m_lastHdr10, sizeof(hdr10)))
++      {
++        // Sets HDR10 metadata only
++        DX::Windowing()->SetHdrMetaData(hdr10);
++        m_lastHdr10 = hdr10;
++      }
++    }
++    else
++    {
++      // Sets HDR10 metadata and enables HDR10 color space (switch to HDR rendering)
++      DX::Windowing()->SetHdrMetaData(hdr10);
++      CLog::LogF(LOGINFO, "Switching to HDR rendering");
++      DX::Windowing()->SetHdrColorSpace(DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020);
++      m_HdrType = HDR_TYPE::HDR_HDR10;
++      m_lastHdr10 = hdr10;
++    }
++    m_iCntMetaData = 0;
++  }
++  // HLG
++  else if (rb->color_transfer == AVCOL_TRC_ARIB_STD_B67 && rb->primaries == AVCOL_PRI_BT2020)
++  {
++    if (m_HdrType != HDR_TYPE::HDR_HLG)
++    {
++      // Switch to HLG rendering
++      CLog::LogF(LOGINFO, "Switching to HLG rendering");
++      DX::Windowing()->SetHdrColorSpace(DXGI_COLOR_SPACE_YCBCR_FULL_GHLG_TOPLEFT_P2020);
++      m_HdrType = HDR_TYPE::HDR_HLG;
++    }
++  }
++  // Rec. 2020
++  else if (rb->primaries == AVCOL_PRI_BT2020)
++  {
++    if (m_HdrType != HDR_TYPE::HDR_REC2020)
++    {
++      // Switch to Rec.2020 rendering
++      CLog::LogF(LOGINFO, "Switching to Rec.2020 rendering");
++      DX::Windowing()->SetHdrColorSpace(DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020);
++      m_HdrType = HDR_TYPE::HDR_REC2020;
++    }
++  }
++  else
++  {
++    if (m_HdrType == HDR_TYPE::HDR_HDR10)
++    {
++      m_iCntMetaData++;
++      if (m_iCntMetaData > 60)
++      {
++        // If more than 60 frames are received without HDR10 metadata switch to SDR rendering
++        CLog::LogF(LOGINFO, "Switching to SDR rendering");
++        DX::Windowing()->SetHdrColorSpace(DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709);
++        m_HdrType = HDR_TYPE::HDR_NONE_SDR;
++        m_iCntMetaData = 0;
++        if (m_AutoSwitchHDR)
++          DX::Windowing()->ToggleHDR(); // Toggle display HDR OFF
++      }
++    }
++    if (m_HdrType == HDR_TYPE::HDR_HLG || m_HdrType == HDR_TYPE::HDR_REC2020)
++    {
++      // Switch to SDR rendering
++      CLog::LogF(LOGINFO, "Switching to SDR rendering");
++      DX::Windowing()->SetHdrColorSpace(DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709);
++      m_HdrType = HDR_TYPE::HDR_NONE_SDR;
++      if (m_AutoSwitchHDR)
++        DX::Windowing()->ToggleHDR(); // Toggle display HDR OFF
++    }
++  }
++}
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererBase.h b/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererBase.h
+index e6083cffdcf3..786428b0165b 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererBase.h
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererBase.h
+@@ -7,14 +7,16 @@
+  */
+ #pragma once
+ 
+-#include "cores/VideoSettings.h"
+-#include "guilib/D3DResource.h"
+ #include "VideoRenderers/ColorManager.h"
+ #include "VideoRenderers/RenderInfo.h"
+ #include "VideoRenderers/VideoShaders/WinVideoFilter.h"
++#include "cores/VideoSettings.h"
++#include "guilib/D3DResource.h"
+ 
+-#include <d3d11.h>
+ #include <vector>
++
++#include <d3d11.h>
++#include <dxgi1_5.h>
+ extern "C" {
+ #include <libavutil/mastering_display_metadata.h>
+ }
+@@ -42,6 +44,14 @@ enum RenderMethod
+   RENDER_SW = 0x03,
+ };
+ 
++enum class HDR_TYPE : uint32_t
++{
++  HDR_NONE_SDR = 0x00,
++  HDR_HDR10 = 0x01,
++  HDR_HLG = 0x02,
++  HDR_REC2020 = 0x03
++};
++
+ class CRenderBuffer
+ {
+ public:
+@@ -121,6 +131,7 @@ class CRendererBase
+   static DXGI_FORMAT GetDXGIFormat(const VideoPicture &picture);
+   static DXGI_FORMAT GetDXGIFormat(CVideoBuffer* videoBuffer);
+   static AVPixelFormat GetAVFormat(DXGI_FORMAT dxgi_format);
++  static DXGI_HDR_METADATA_HDR10 GetDXGIHDR10MetaData(CRenderBuffer* rb);
+ 
+ protected:
+   explicit CRendererBase(CVideoSettings& videoSettings);
+@@ -131,6 +142,8 @@ class CRendererBase
+   bool CreateRenderBuffer(int index);
+   void DeleteRenderBuffer(int index);
+ 
++  void ProcessHDR(CRenderBuffer* rb);
++
+   virtual void RenderImpl(CD3DTexture& target, CRect& sourceRect, CPoint (&destPoints)[4], uint32_t flags) = 0;
+   virtual void FinalOutput(CD3DTexture& source, CD3DTexture& target, const CRect& sourceRect, const CPoint(&destPoints)[4]);
+ 
+@@ -145,7 +158,7 @@ class CRendererBase
+   bool m_useDithering = false;
+   bool m_cmsOn = false;
+   bool m_clutLoaded = false;
+-  
++
+   int m_iBufferIndex = 0;
+   int m_iNumBuffers = 0;
+   int m_iBuffersRequired = 0;
+@@ -167,4 +180,9 @@ class CRendererBase
+   Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_pLUTView;
+   CVideoSettings& m_videoSettings;
+   std::map<int, CRenderBuffer*> m_renderBuffers;
++
++  DXGI_HDR_METADATA_HDR10 m_lastHdr10 = {};
++  HDR_TYPE m_HdrType = HDR_TYPE::HDR_NONE_SDR;
++  int m_iCntMetaData = 0;
++  bool m_AutoSwitchHDR = false;
+ };
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererDXVA.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererDXVA.cpp
+index 7b8f3fd4ac22..31cfd02ca528 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererDXVA.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererDXVA.cpp
+@@ -110,14 +110,13 @@ bool CRendererDXVA::Configure(const VideoPicture& picture, float fps, unsigned o
+ 
+ bool CRendererDXVA::NeedBuffer(int idx)
+ {
+-  if (m_renderBuffers[idx]->IsLoaded())
++  if (m_renderBuffers[idx]->IsLoaded() && m_renderBuffers[idx]->pictureFlags & DVP_FLAG_INTERLACED)
+   {
+-    const int numPast = m_processor->PastRefs();
+-    if (m_renderBuffers[idx]->pictureFlags & DVP_FLAG_INTERLACED &&
+-      m_renderBuffers[idx]->frameIdx + numPast * 2 >=
+-      m_renderBuffers[m_iBufferIndex]->frameIdx)
++    if (m_renderBuffers[idx]->frameIdx + (m_processor->PastRefs() * 2u) >=
++        m_renderBuffers[m_iBufferIndex]->frameIdx)
+       return true;
+   }
++
+   return false;
+ }
+ 
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererShaders.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererShaders.cpp
+index 04bdc8504dcb..9111e208a643 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererShaders.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/windows/RendererShaders.cpp
+@@ -132,7 +132,14 @@ void CRendererShaders::UpdateVideoFilters()
+   if (!m_colorShader)
+   {
+     m_colorShader = std::make_unique<CYUV2RGBShader>();
+-    if (!m_colorShader->Create(m_format, AVCOL_PRI_BT709, m_srcPrimaries))
++
++    AVColorPrimaries dstPrimaries = AVCOL_PRI_BT709;
++
++    if (DX::Windowing()->IsHDROutput() &&
++        (m_srcPrimaries == AVCOL_PRI_BT709 || m_srcPrimaries == AVCOL_PRI_BT2020))
++      dstPrimaries = m_srcPrimaries;
++
++    if (!m_colorShader->Create(m_format, dstPrimaries, m_srcPrimaries))
+     {
+       // we are in a big trouble
+       CLog::LogF(LOGERROR, "unable to create YUV->RGB shader, rendering is not possible");
+diff --git a/xbmc/input/actions/ActionIDs.h b/xbmc/input/actions/ActionIDs.h
+index e68d2802825e..760228d30a09 100644
+--- a/xbmc/input/actions/ActionIDs.h
++++ b/xbmc/input/actions/ActionIDs.h
+@@ -327,6 +327,8 @@
+ #define ACTION_VOLUME_SET 245
+ #define ACTION_TOGGLE_COMMSKIP 246
+ 
++#define ACTION_HDR_TOGGLE 247 //!< Toggle display HDR on/off
++
+ #define ACTION_PLAYER_RESET 248 //!< Send a reset command to the active game
+ 
+ #define ACTION_TOGGLE_FONT 249 //!< Toggle font. Used in TextViewer dialog
+diff --git a/xbmc/input/actions/ActionTranslator.cpp b/xbmc/input/actions/ActionTranslator.cpp
+index 8731459326f6..877bd3b9abf5 100644
+--- a/xbmc/input/actions/ActionTranslator.cpp
++++ b/xbmc/input/actions/ActionTranslator.cpp
+@@ -201,6 +201,9 @@ static const std::map<ActionName, ActionID> ActionMappings = {
+     {"togglestereomode", ACTION_STEREOMODE_TOGGLE},
+     {"stereomodetomono", ACTION_STEREOMODE_TOMONO},
+ 
++    // HDR display support
++    {"hdrtoggle", ACTION_HDR_TOGGLE},
++
+     // PVR actions
+     {"channelup", ACTION_CHANNEL_UP},
+     {"channeldown", ACTION_CHANNEL_DOWN},
+diff --git a/xbmc/platform/win32/WIN32Util.cpp b/xbmc/platform/win32/WIN32Util.cpp
+index b84cd4f80225..734f6bb9713d 100644
+--- a/xbmc/platform/win32/WIN32Util.cpp
++++ b/xbmc/platform/win32/WIN32Util.cpp
+@@ -44,13 +44,18 @@ using namespace MEDIA_DETECT;
+ 
+ #ifdef TARGET_WINDOWS_STORE
+ #include "platform/win10/AsyncHelpers.h"
++
+ #include <ppltasks.h>
++#include <winrt/Windows.Devices.Display.Core.h>
+ #include <winrt/Windows.Devices.Power.h>
+ #include <winrt/Windows.Foundation.Collections.h>
++#include <winrt/Windows.Graphics.Display.Core.h>
+ #include <winrt/Windows.Storage.h>
+ 
+ using namespace winrt::Windows::Devices::Power;
++using namespace winrt::Windows::Devices::Display::Core;
+ using namespace winrt::Windows::Graphics::Display;
++using namespace winrt::Windows::Graphics::Display::Core;
+ using namespace winrt::Windows::Storage;
+ #endif
+ 
+@@ -1229,3 +1234,281 @@ bool CWIN32Util::SetThreadLocalLocale(bool enable /* = true */)
+   return _configthreadlocale(param) != -1;
+ }
+ 
++HDR_STATUS CWIN32Util::ToggleWindowsHDR(DXGI_MODE_DESC& modeDesc)
++{
++  HDR_STATUS status = HDR_STATUS::HDR_TOGGLE_FAILED;
++
++#ifdef TARGET_WINDOWS_STORE
++  auto hdmiDisplayInfo = HdmiDisplayInformation::GetForCurrentView();
++
++  if (hdmiDisplayInfo == nullptr)
++    return status;
++
++  auto current = hdmiDisplayInfo.GetCurrentDisplayMode();
++
++  auto newColorSp = (current.ColorSpace() == HdmiDisplayColorSpace::BT2020)
++                        ? HdmiDisplayColorSpace::BT709
++                        : HdmiDisplayColorSpace::BT2020;
++
++  auto modes = hdmiDisplayInfo.GetSupportedDisplayModes();
++
++  // Browse over all modes available like the current (resolution and refresh)
++  // but reciprocals HDR (color space and transfer).
++  // NOTE: transfer for HDR is here "fake HDR" (EotfSdr) to be
++  // able render SRD content with HDR ON, same as Windows HDR switch does.
++  // GUI-skin is SDR. The real HDR mode is activated later when playback begins.
++  for (const auto& mode : modes)
++  {
++    if (mode.ColorSpace() == newColorSp &&
++        mode.ResolutionHeightInRawPixels() == current.ResolutionHeightInRawPixels() &&
++        mode.ResolutionWidthInRawPixels() == current.ResolutionWidthInRawPixels() &&
++        mode.StereoEnabled() == false && fabs(mode.RefreshRate() - current.RefreshRate()) < 0.0001)
++    {
++      if (current.ColorSpace() == HdmiDisplayColorSpace::BT2020) // HDR is ON
++      {
++        CLog::LogF(LOGINFO, "Toggle Windows HDR Off (ON => OFF).");
++        if (Wait(hdmiDisplayInfo.RequestSetCurrentDisplayModeAsync(mode,
++                                                                   HdmiDisplayHdrOption::None)))
++          status = HDR_STATUS::HDR_OFF;
++      }
++      else // HDR is OFF
++      {
++        CLog::LogF(LOGINFO, "Toggle Windows HDR On (OFF => ON).");
++        if (Wait(hdmiDisplayInfo.RequestSetCurrentDisplayModeAsync(mode,
++                                                                   HdmiDisplayHdrOption::EotfSdr)))
++          status = HDR_STATUS::HDR_ON;
++      }
++      break;
++    }
++  }
++#else
++  uint32_t pathCount = 0;
++  uint32_t modeCount = 0;
++
++  MONITORINFOEXW mi = {};
++  mi.cbSize = sizeof(mi);
++  GetMonitorInfoW(MonitorFromWindow(g_hWnd, MONITOR_DEFAULTTOPRIMARY), &mi);
++  const std::wstring deviceNameW = mi.szDevice;
++
++  if (ERROR_SUCCESS == GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount))
++  {
++    std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
++    std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
++
++    if (ERROR_SUCCESS == QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &pathCount, paths.data(),
++                                            &modeCount, modes.data(), nullptr))
++    {
++      DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO getColorInfo = {};
++      getColorInfo.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO;
++      getColorInfo.header.size = sizeof(getColorInfo);
++
++      DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE setColorState = {};
++      setColorState.header.type = DISPLAYCONFIG_DEVICE_INFO_SET_ADVANCED_COLOR_STATE;
++      setColorState.header.size = sizeof(setColorState);
++
++      DISPLAYCONFIG_SOURCE_DEVICE_NAME getSourceName = {};
++      getSourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
++      getSourceName.header.size = sizeof(getSourceName);
++
++      // Only try to toggle display currently used by Kodi
++      for (const auto& path : paths)
++      {
++        getSourceName.header.adapterId.HighPart = path.sourceInfo.adapterId.HighPart;
++        getSourceName.header.adapterId.LowPart = path.sourceInfo.adapterId.LowPart;
++        getSourceName.header.id = path.sourceInfo.id;
++
++        if (ERROR_SUCCESS == DisplayConfigGetDeviceInfo(&getSourceName.header))
++        {
++          const std::wstring sourceNameW = getSourceName.viewGdiDeviceName;
++          if (deviceNameW == sourceNameW)
++          {
++            const auto& mode = modes.at(path.targetInfo.modeInfoIdx);
++
++            getColorInfo.header.adapterId.HighPart = mode.adapterId.HighPart;
++            getColorInfo.header.adapterId.LowPart = mode.adapterId.LowPart;
++            getColorInfo.header.id = mode.id;
++
++            setColorState.header.adapterId.HighPart = mode.adapterId.HighPart;
++            setColorState.header.adapterId.LowPart = mode.adapterId.LowPart;
++            setColorState.header.id = mode.id;
++
++            if (ERROR_SUCCESS == DisplayConfigGetDeviceInfo(&getColorInfo.header))
++            {
++              if (getColorInfo.advancedColorSupported)
++              {
++                if (getColorInfo.advancedColorEnabled) // HDR is ON
++                {
++                  setColorState.enableAdvancedColor = FALSE;
++                  status = HDR_STATUS::HDR_OFF;
++                  CLog::LogF(LOGINFO, "Toggle Windows HDR Off (ON => OFF).");
++                }
++                else // HDR is OFF
++                {
++                  setColorState.enableAdvancedColor = TRUE;
++                  status = HDR_STATUS::HDR_ON;
++                  CLog::LogF(LOGINFO, "Toggle Windows HDR On (OFF => ON).");
++                }
++                if (ERROR_SUCCESS != DisplayConfigSetDeviceInfo(&setColorState.header))
++                  status = HDR_STATUS::HDR_TOGGLE_FAILED;
++              }
++            }
++            break;
++          }
++        }
++      }
++    }
++  }
++
++  // Restores previous graphics mode before toggle HDR
++  if (status != HDR_STATUS::HDR_TOGGLE_FAILED && modeDesc.RefreshRate.Denominator != 0)
++  {
++    float fps = static_cast<float>(modeDesc.RefreshRate.Numerator) /
++                static_cast<float>(modeDesc.RefreshRate.Denominator);
++    int32_t est;
++    DEVMODEW devmode = {};
++    devmode.dmSize = sizeof(devmode);
++    devmode.dmPelsWidth = modeDesc.Width;
++    devmode.dmPelsHeight = modeDesc.Height;
++    devmode.dmDisplayFrequency = static_cast<uint32_t>(fps);
++    if (modeDesc.ScanlineOrdering &&
++        modeDesc.ScanlineOrdering != DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE)
++      devmode.dmDisplayFlags = DM_INTERLACED;
++    devmode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY | DM_DISPLAYFLAGS;
++    est = ChangeDisplaySettingsExW(deviceNameW.c_str(), &devmode, nullptr, CDS_FULLSCREEN, nullptr);
++    if (est == DISP_CHANGE_SUCCESSFUL)
++      CLog::LogF(LOGDEBUG, "Previous graphics mode restored OK");
++    else
++      CLog::LogF(LOGERROR, "Previous graphics mode cannot be restored (error# {})", est);
++  }
++#endif
++
++  return status;
++}
++
++HDR_STATUS CWIN32Util::GetWindowsHDRStatus()
++{
++  bool advancedColorSupported = false;
++  bool advancedColorEnabled = false;
++  HDR_STATUS status = HDR_STATUS::HDR_UNSUPPORTED;
++
++#ifdef TARGET_WINDOWS_STORE
++  auto displayInformation = DisplayInformation::GetForCurrentView();
++
++  if (displayInformation)
++  {
++    auto advancedColorInfo = displayInformation.GetAdvancedColorInfo();
++
++    if (advancedColorInfo)
++    {
++      if (advancedColorInfo.CurrentAdvancedColorKind() == AdvancedColorKind::HighDynamicRange)
++      {
++        advancedColorSupported = true;
++        advancedColorEnabled = true;
++      }
++    }
++  }
++  // Try to find out if the display supports HDR even if Windows HDR switch is OFF
++  if (!advancedColorEnabled)
++  {
++    auto displayManager = DisplayManager::Create(DisplayManagerOptions::None);
++
++    if (displayManager)
++    {
++      auto targets = displayManager.GetCurrentTargets();
++
++      for (const auto& target : targets)
++      {
++        if (target.IsConnected())
++        {
++          auto displayMonitor = target.TryGetMonitor();
++          if (displayMonitor.MaxLuminanceInNits() >= 400.0f)
++          {
++            advancedColorSupported = true;
++            break;
++          }
++        }
++      }
++      displayManager.Close();
++    }
++  }
++#else
++  uint32_t pathCount = 0;
++  uint32_t modeCount = 0;
++
++  MONITORINFOEXW mi = {};
++  mi.cbSize = sizeof(mi);
++  GetMonitorInfoW(MonitorFromWindow(g_hWnd, MONITOR_DEFAULTTOPRIMARY), &mi);
++  const std::wstring deviceNameW = mi.szDevice;
++
++  if (ERROR_SUCCESS == GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount))
++  {
++    std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
++    std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
++
++    if (ERROR_SUCCESS == QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &pathCount, paths.data(),
++                                            &modeCount, modes.data(), 0))
++    {
++      DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO getColorInfo = {};
++      getColorInfo.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO;
++      getColorInfo.header.size = sizeof(getColorInfo);
++
++      DISPLAYCONFIG_SOURCE_DEVICE_NAME getSourceName = {};
++      getSourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
++      getSourceName.header.size = sizeof(getSourceName);
++
++      for (const auto& path : paths)
++      {
++        getSourceName.header.adapterId.HighPart = path.sourceInfo.adapterId.HighPart;
++        getSourceName.header.adapterId.LowPart = path.sourceInfo.adapterId.LowPart;
++        getSourceName.header.id = path.sourceInfo.id;
++
++        if (ERROR_SUCCESS == DisplayConfigGetDeviceInfo(&getSourceName.header))
++        {
++          const std::wstring sourceNameW = getSourceName.viewGdiDeviceName;
++          if (g_hWnd == nullptr || deviceNameW == sourceNameW)
++          {
++            const auto& mode = modes.at(path.targetInfo.modeInfoIdx);
++
++            getColorInfo.header.adapterId.HighPart = mode.adapterId.HighPart;
++            getColorInfo.header.adapterId.LowPart = mode.adapterId.LowPart;
++            getColorInfo.header.id = mode.id;
++
++            if (ERROR_SUCCESS == DisplayConfigGetDeviceInfo(&getColorInfo.header))
++            {
++              if (getColorInfo.advancedColorEnabled)
++                advancedColorEnabled = true;
++
++              if (getColorInfo.advancedColorSupported)
++                advancedColorSupported = true;
++            }
++
++            if (g_hWnd != nullptr)
++              break;
++          }
++        }
++      }
++    }
++  }
++#endif
++
++  if (!advancedColorSupported)
++  {
++    status = HDR_STATUS::HDR_UNSUPPORTED;
++    if (CServiceBroker::IsServiceManagerUp())
++      CLog::LogF(LOGDEBUG, "Display is not HDR capable or cannot be detected");
++  }
++  else if (advancedColorSupported && !advancedColorEnabled)
++  {
++    status = HDR_STATUS::HDR_OFF;
++    if (CServiceBroker::IsServiceManagerUp())
++      CLog::LogF(LOGDEBUG, "Display HDR capable and current HDR status is OFF");
++  }
++  else if (advancedColorSupported && advancedColorEnabled)
++  {
++    status = HDR_STATUS::HDR_ON;
++    if (CServiceBroker::IsServiceManagerUp())
++      CLog::LogF(LOGDEBUG, "Display HDR capable and current HDR status is ON");
++  }
++
++  return status;
++}
+diff --git a/xbmc/platform/win32/WIN32Util.h b/xbmc/platform/win32/WIN32Util.h
+index c46e73ebbcbc..cb110183bd54 100644
+--- a/xbmc/platform/win32/WIN32Util.h
++++ b/xbmc/platform/win32/WIN32Util.h
+@@ -8,11 +8,14 @@
+ 
+ #pragma once
+ 
++#include "HDRStatus.h"
+ #include "URL.h"
+ #include "utils/Geometry.h"
+ 
+ #include <vector>
+ 
++#include <dxgi1_5.h>
++
+ #define BONJOUR_EVENT             ( WM_USER + 0x100 )	// Message sent to the Window when a Bonjour event occurs.
+ #define BONJOUR_BROWSER_EVENT     ( WM_USER + 0x110 )
+ 
+@@ -63,4 +66,8 @@ class CWIN32Util
+ 
+   static std::string WUSysMsg(DWORD dwError);
+   static bool SetThreadLocalLocale(bool enable = true);
++
++  // HDR display support
++  static HDR_STATUS ToggleWindowsHDR(DXGI_MODE_DESC& modeDesc);
++  static HDR_STATUS GetWindowsHDRStatus();
+ };
+diff --git a/xbmc/rendering/dx/DeviceResources.cpp b/xbmc/rendering/dx/DeviceResources.cpp
+index 681de567a8bb..df2d89a66379 100644
+--- a/xbmc/rendering/dx/DeviceResources.cpp
++++ b/xbmc/rendering/dx/DeviceResources.cpp
+@@ -7,18 +7,22 @@
+  */
+ 
+ #include "DeviceResources.h"
++
+ #include "DirectXHelper.h"
+ #include "RenderContext.h"
++#include "ServiceBroker.h"
+ #include "guilib/GUIComponent.h"
+ #include "guilib/GUIWindowManager.h"
+-#include "windowing/GraphicContext.h"
+ #include "messaging/ApplicationMessenger.h"
+-#include "platform/win32/CharsetConverter.h"
+-#include "ServiceBroker.h"
+ #include "settings/AdvancedSettings.h"
++#include "settings/Settings.h"
+ #include "settings/SettingsComponent.h"
+-#include "utils/log.h"
+ #include "utils/SystemInfo.h"
++#include "utils/log.h"
++#include "windowing/GraphicContext.h"
++
++#include "platform/win32/CharsetConverter.h"
++#include "platform/win32/WIN32Util.h"
+ 
+ #ifdef _DEBUG
+ #include <dxgidebug.h>
+@@ -309,9 +313,10 @@ void DX::DeviceResources::CreateDeviceResources()
+   // Don't forget to declare your application's minimum required feature level in its
+   // description.  All applications are assumed to support 9.1 unless otherwise stated.
+   std::vector<D3D_FEATURE_LEVEL> featureLevels;
++  if (CSysInfo::IsWindowsVersionAtLeast(CSysInfo::WindowsVersionWin10))
++    featureLevels.push_back(D3D_FEATURE_LEVEL_12_0);
+   if (CSysInfo::IsWindowsVersionAtLeast(CSysInfo::WindowsVersionWin8))
+     featureLevels.push_back(D3D_FEATURE_LEVEL_11_1);
+-
+   featureLevels.push_back(D3D_FEATURE_LEVEL_11_0);
+   featureLevels.push_back(D3D_FEATURE_LEVEL_10_1);
+   featureLevels.push_back(D3D_FEATURE_LEVEL_10_0);
+@@ -513,11 +518,13 @@ void DX::DeviceResources::ResizeBuffers()
+ 
+   CLog::LogF(LOGDEBUG, "resize buffers.");
+ 
+-  bool bHWStereoEnabled = RENDER_STEREO_MODE_HARDWAREBASED == CServiceBroker::GetWinSystem()->GetGfxContext().GetStereoMode();
++  bool bHWStereoEnabled = RENDER_STEREO_MODE_HARDWAREBASED ==
++                          CServiceBroker::GetWinSystem()->GetGfxContext().GetStereoMode();
+   bool windowed = true;
++  bool isHdrEnabled = false;
+   HRESULT hr = E_FAIL;
++  DXGI_SWAP_CHAIN_DESC1 scDesc = {};
+ 
+-  DXGI_SWAP_CHAIN_DESC1 scDesc = { 0 };
+   if (m_swapChain)
+   {
+     BOOL bFullcreen = 0;
+@@ -529,6 +536,7 @@ void DX::DeviceResources::ResizeBuffers()
+ 
+     // check if swapchain needs to be recreated
+     m_swapChain->GetDesc1(&scDesc);
++
+     if ((scDesc.Stereo == TRUE) != bHWStereoEnabled)
+     {
+       // check fullscreen state and go to windowing if necessary
+@@ -536,17 +544,20 @@ void DX::DeviceResources::ResizeBuffers()
+       {
+         m_swapChain->SetFullscreenState(false, nullptr); // mandatory before releasing swapchain
+       }
+-
+       m_swapChain = nullptr;
+       m_deferrContext->Flush();
+       m_d3dContext->Flush();
+     }
+   }
+ 
++  isHdrEnabled = (HDR_STATUS::HDR_ON == CWIN32Util::GetWindowsHDRStatus());
++
+   if (m_swapChain != nullptr)
+   {
+     // If the swap chain already exists, resize it.
+     m_swapChain->GetDesc1(&scDesc);
++    isHdrEnabled ? scDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM
++                 : scDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+     hr = m_swapChain->ResizeBuffers(
+       scDesc.BufferCount,
+       lround(m_outputSize.Width),
+@@ -569,27 +580,31 @@ void DX::DeviceResources::ResizeBuffers()
+   else
+   {
+     // Otherwise, create a new one using the same adapter as the existing Direct3D device.
+-    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
++    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+     swapChainDesc.Width = lround(m_outputSize.Width);
+     swapChainDesc.Height = lround(m_outputSize.Height);
+     swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+     swapChainDesc.Stereo = bHWStereoEnabled;
+     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+-    swapChainDesc.BufferCount = 3 * (1 + bHWStereoEnabled);
+-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
++    // HDR 60 fps needs 6 buffers to avoid frame drops but in Windows 10 it's good for all
++    swapChainDesc.BufferCount =
++        (m_d3dFeatureLevel >= D3D_FEATURE_LEVEL_12_0) ? 6 : 3 * (1 + bHWStereoEnabled);
++    swapChainDesc.SwapEffect = (m_d3dFeatureLevel >= D3D_FEATURE_LEVEL_12_0)
++                                   ? DXGI_SWAP_EFFECT_FLIP_DISCARD
++                                   : DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+     swapChainDesc.Flags = windowed ? 0 : DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+     swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+     swapChainDesc.SampleDesc.Count = 1;
+     swapChainDesc.SampleDesc.Quality = 0;
+ 
+-    DXGI_SWAP_CHAIN_FULLSCREEN_DESC scFSDesc = { 0 }; // unused for uwp
++    DXGI_SWAP_CHAIN_FULLSCREEN_DESC scFSDesc = {}; // unused for uwp
+     scFSDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+     scFSDesc.Windowed = windowed;
+ 
+     ComPtr<IDXGISwapChain1> swapChain;
+-    if ( m_d3dFeatureLevel >= D3D_FEATURE_LEVEL_11_0
+-      && !bHWStereoEnabled
+-      && CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_bTry10bitOutput)
++    if (m_d3dFeatureLevel >= D3D_FEATURE_LEVEL_11_0 && !bHWStereoEnabled &&
++        (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_bTry10bitOutput ||
++         isHdrEnabled))
+     {
+       swapChainDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
+       hr = CreateSwapChain(swapChainDesc, scFSDesc, &swapChain);
+@@ -597,6 +612,7 @@ void DX::DeviceResources::ResizeBuffers()
+       {
+         CLog::LogF(LOGWARNING, "creating 10bit swapchain failed, fallback to 8bit.");
+         swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
++        swapChainDesc.BufferCount = 3 * (1 + bHWStereoEnabled);
+       }
+     }
+ 
+@@ -615,7 +631,8 @@ void DX::DeviceResources::ResizeBuffers()
+       hr = CreateSwapChain(swapChainDesc, scFSDesc, &swapChain); CHECK_ERR();
+ 
+       // fallback to split_horizontal mode.
+-      CServiceBroker::GetWinSystem()->GetGfxContext().SetStereoMode(RENDER_STEREO_MODE_SPLIT_HORIZONTAL);
++      CServiceBroker::GetWinSystem()->GetGfxContext().SetStereoMode(
++          RENDER_STEREO_MODE_SPLIT_HORIZONTAL);
+     }
+ 
+     if (FAILED(hr))
+@@ -624,6 +641,13 @@ void DX::DeviceResources::ResizeBuffers()
+       return;
+     }
+ 
++    m_IsHDROutput = (swapChainDesc.Format == DXGI_FORMAT_R10G10B10A2_UNORM) && isHdrEnabled;
++
++    const int bits = (swapChainDesc.Format == DXGI_FORMAT_R10G10B10A2_UNORM) ? 10 : 8;
++
++    CLog::LogF(LOGINFO, "{} bit swapchain is used with {} buffers and {} output", bits,
++               swapChainDesc.BufferCount, m_IsHDROutput ? "HDR" : "SDR");
++
+     hr = swapChain.As(&m_swapChain); CHECK_ERR();
+     m_stereoEnabled = bHWStereoEnabled;
+ 
+@@ -633,6 +657,8 @@ void DX::DeviceResources::ResizeBuffers()
+     hr = m_d3dDevice.As(&dxgiDevice); CHECK_ERR();
+     dxgiDevice->SetMaximumFrameLatency(1);
+   }
++
++  CLog::LogF(LOGDEBUG, "end resize buffers.");
+ }
+ 
+ // These resources need to be recreated every time the window size is changed.
+@@ -1097,3 +1123,126 @@ void DX::DeviceResources::Trim() const
+ }
+ 
+ #endif
++
++void DX::DeviceResources::SetHdrMetaData(DXGI_HDR_METADATA_HDR10& hdr10) const
++{
++  ComPtr<IDXGISwapChain4> swapChain4;
++
++  if (m_swapChain == nullptr)
++    return;
++
++  if (SUCCEEDED(m_swapChain.As(&swapChain4)))
++  {
++    if (SUCCEEDED(swapChain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10), &hdr10)))
++    {
++      CLog::LogF(LOGDEBUG,
++                 "(raw) RP {} {} | GP {} {} | BP {} {} | WP {} {} | Max ML {} | min ML "
++                 "{} | Max CLL {} | Max FALL {}",
++                 hdr10.RedPrimary[0], hdr10.RedPrimary[1], hdr10.GreenPrimary[0],
++                 hdr10.GreenPrimary[1], hdr10.BluePrimary[0], hdr10.BluePrimary[1],
++                 hdr10.WhitePoint[0], hdr10.WhitePoint[1], hdr10.MaxMasteringLuminance,
++                 hdr10.MinMasteringLuminance, hdr10.MaxContentLightLevel,
++                 hdr10.MaxFrameAverageLightLevel);
++
++      constexpr double FACTOR_1 = 50000.0;
++      constexpr double FACTOR_2 = 10000.0;
++      const double RP_0 = static_cast<double>(hdr10.RedPrimary[0]) / FACTOR_1;
++      const double RP_1 = static_cast<double>(hdr10.RedPrimary[1]) / FACTOR_1;
++      const double GP_0 = static_cast<double>(hdr10.GreenPrimary[0]) / FACTOR_1;
++      const double GP_1 = static_cast<double>(hdr10.GreenPrimary[1]) / FACTOR_1;
++      const double BP_0 = static_cast<double>(hdr10.BluePrimary[0]) / FACTOR_1;
++      const double BP_1 = static_cast<double>(hdr10.BluePrimary[1]) / FACTOR_1;
++      const double WP_0 = static_cast<double>(hdr10.WhitePoint[0]) / FACTOR_1;
++      const double WP_1 = static_cast<double>(hdr10.WhitePoint[1]) / FACTOR_1;
++      const double Max_ML = static_cast<double>(hdr10.MaxMasteringLuminance) / FACTOR_2;
++      const double min_ML = static_cast<double>(hdr10.MinMasteringLuminance) / FACTOR_2;
++
++      CLog::LogF(LOGINFO,
++                 "RP {:0.3f} {:0.3f} | GP {:0.3f} {:0.3f} | BP {:0.3f} {:0.3f} | WP {:0.3f} "
++                 "{:0.3f} | Max ML {:0.0f} | min ML {:0.3f} | Max CLL {} | Max FALL {}",
++                 RP_0, RP_1, GP_0, GP_1, BP_0, BP_1, WP_0, WP_1, Max_ML, min_ML,
++                 hdr10.MaxContentLightLevel, hdr10.MaxFrameAverageLightLevel);
++    }
++    else
++    {
++      CLog::LogF(LOGERROR, "DXGI SetHDRMetaData failed");
++    }
++  }
++}
++
++void DX::DeviceResources::SetHdrColorSpace(const DXGI_COLOR_SPACE_TYPE colorSpace) const
++{
++  ComPtr<IDXGISwapChain3> swapChain3;
++
++  if (m_swapChain == nullptr)
++    return;
++
++  if (SUCCEEDED(m_swapChain.As(&swapChain3)))
++  {
++    DXGI_COLOR_SPACE_TYPE cs = colorSpace;
++    if (DX::Windowing()->UseLimitedColor())
++    {
++      switch (cs)
++      {
++        case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:
++          cs = DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709;
++          break;
++        case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:
++          cs = DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020;
++          break;
++        case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020:
++          cs = DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P2020;
++          break;
++        case DXGI_COLOR_SPACE_YCBCR_FULL_GHLG_TOPLEFT_P2020:
++          cs = DXGI_COLOR_SPACE_YCBCR_STUDIO_GHLG_TOPLEFT_P2020;
++          break;
++      }
++    }
++    if (SUCCEEDED(swapChain3->SetColorSpace1(cs)))
++    {
++      CLog::LogF(LOGDEBUG, "DXGI SetColorSpace1 success");
++    }
++    else
++    {
++      CLog::LogF(LOGERROR, "DXGI SetColorSpace1 failed");
++    }
++  }
++}
++
++HDR_STATUS DX::DeviceResources::ToggleHDR()
++{
++  DXGI_MODE_DESC md = {};
++
++  if (m_swapChain)
++    GetDisplayMode(&md);
++
++  // Toggle display HDR
++  DX::Windowing()->SetAlteringWindow(true);
++
++  HDR_STATUS hdrStatus = CWIN32Util::ToggleWindowsHDR(md);
++
++  // Kill swapchain
++  if (m_swapChain && hdrStatus != HDR_STATUS::HDR_TOGGLE_FAILED)
++  {
++    CLog::LogF(LOGDEBUG, "Re-create swapchain due HDR <-> SDR switch");
++    BOOL bFullcreen = 0;
++    m_swapChain->GetFullscreenState(&bFullcreen, nullptr);
++    if (!!bFullcreen)
++      m_swapChain->SetFullscreenState(false, nullptr);
++    m_swapChain = nullptr;
++    m_deferrContext->Flush();
++    m_d3dContext->Flush();
++  }
++
++  DX::Windowing()->SetAlteringWindow(false);
++
++  // Re-create swapchain
++  if (hdrStatus != HDR_STATUS::HDR_TOGGLE_FAILED)
++  {
++    CreateWindowSizeDependentResources();
++
++    DX::Windowing()->NotifyAppFocusChange(true);
++  }
++
++  return hdrStatus;
++}
+diff --git a/xbmc/rendering/dx/DeviceResources.h b/xbmc/rendering/dx/DeviceResources.h
+index 50a16521a35b..b2e0dd237946 100644
+--- a/xbmc/rendering/dx/DeviceResources.h
++++ b/xbmc/rendering/dx/DeviceResources.h
+@@ -8,19 +8,17 @@
+ 
+ #pragma once
+ 
+-#include <wrl.h>
+-#include <wrl/client.h>
+-#include <concrt.h>
+-#if defined(TARGET_WINDOWS_STORE)
+-#include <dxgi1_3.h>
+-#else
+-#include <dxgi1_2.h>
+-#endif
++#include "DirectXHelper.h"
++#include "HDRStatus.h"
++#include "guilib/D3DResource.h"
++
+ #include <functional>
+ #include <memory>
+ 
+-#include "DirectXHelper.h"
+-#include "guilib/D3DResource.h"
++#include <concrt.h>
++#include <dxgi1_5.h>
++#include <wrl.h>
++#include <wrl/client.h>
+ 
+ struct RESOLUTION_INFO;
+ 
+@@ -80,6 +78,12 @@ namespace DX
+ 
+     bool SetFullScreen(bool fullscreen, RESOLUTION_INFO& res);
+ 
++    // HDR display support
++    HDR_STATUS ToggleHDR();
++    void SetHdrMetaData(DXGI_HDR_METADATA_HDR10& hdr10) const;
++    void SetHdrColorSpace(const DXGI_COLOR_SPACE_TYPE colorSpace) const;
++    bool IsHDROutput() const { return m_IsHDROutput; }
++
+     // DX resources registration
+     void Register(ID3DResource *resource);
+     void Unregister(ID3DResource *resource);
+@@ -158,7 +162,9 @@ namespace DX
+     Concurrency::critical_section m_criticalSection;
+     Concurrency::critical_section m_resourceSection;
+     std::vector<ID3DResource*> m_resources;
++
+     bool m_stereoEnabled;
+     bool m_bDeviceCreated;
++    bool m_IsHDROutput;
+   };
+ }
+diff --git a/xbmc/settings/AdvancedSettings.cpp b/xbmc/settings/AdvancedSettings.cpp
+index 7138b0a63984..8f1ad484771f 100644
+--- a/xbmc/settings/AdvancedSettings.cpp
++++ b/xbmc/settings/AdvancedSettings.cpp
+@@ -412,6 +412,7 @@ void CAdvancedSettings::Initialize()
+   m_stereoscopicregex_tab = "[-. _]h?tab[-. _]";
+ 
+   m_allowUseSeparateDeviceForDecoding = false;
++  m_disableDXVAdiscreteDecoding = false;
+ 
+   m_videoAssFixedWorks = false;
+ 
+@@ -696,6 +697,8 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
+     m_DXVACheckCompatibilityPresent = XMLUtils::GetBoolean(pElement,"checkdxvacompatibility", m_DXVACheckCompatibility);
+ 
+     XMLUtils::GetBoolean(pElement, "allowdiscretedecoder", m_allowUseSeparateDeviceForDecoding);
++    XMLUtils::GetBoolean(pElement, "disableDXVAdiscretedecoder", m_disableDXVAdiscreteDecoding);
++
+     //0 = disable fps detect, 1 = only detect on timestamps with uniform spacing, 2 detect on all timestamps
+     XMLUtils::GetInt(pElement, "fpsdetect", m_videoFpsDetect, 0, 2);
+     XMLUtils::GetFloat(pElement, "maxtempo", m_maxTempo, 1.5, 2.1);
+diff --git a/xbmc/settings/AdvancedSettings.h b/xbmc/settings/AdvancedSettings.h
+index 0bb22429c4c3..dd6e98e65a56 100644
+--- a/xbmc/settings/AdvancedSettings.h
++++ b/xbmc/settings/AdvancedSettings.h
+@@ -356,6 +356,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
+     std::string m_stereoscopicregex_tab;
+ 
+     bool m_allowUseSeparateDeviceForDecoding;
++    bool m_disableDXVAdiscreteDecoding;
+ 
+     /*!< @brief position behavior of ass subtitles when setting "subtitle position on screen" set to "fixed"
+     True to show at the fixed position set in video calibration
+diff --git a/xbmc/windowing/WinSystem.h b/xbmc/windowing/WinSystem.h
+index bc7cb07cb7a7..751bbde0f864 100644
+--- a/xbmc/windowing/WinSystem.h
++++ b/xbmc/windowing/WinSystem.h
+@@ -8,6 +8,7 @@
+ 
+ #pragma once
+ 
++#include "HDRStatus.h"
+ #include "OSScreenSaver.h"
+ #include "Resolution.h"
+ #include "VideoSync.h"
+@@ -157,6 +158,8 @@ class CWinSystemBase
+   std::shared_ptr<CDPMSSupport> GetDPMSManager();
+   virtual bool SetHDR(const VideoPicture* videoPicture) { return false; };
+   virtual bool IsHDRDisplay() { return false; };
++  virtual HDR_STATUS ToggleHDR() { return HDR_STATUS::HDR_UNSUPPORTED; };
++  virtual HDR_STATUS GetOSHDRStatus() { return HDR_STATUS::HDR_UNSUPPORTED; };
+ 
+   static const char* SETTING_WINSYSTEM_IS_HDR_DISPLAY;
+ 
+diff --git a/xbmc/windowing/win10/WinSystemWin10.h b/xbmc/windowing/win10/WinSystemWin10.h
+index 7e99e7e23c34..5e721760634a 100644
+--- a/xbmc/windowing/win10/WinSystemWin10.h
++++ b/xbmc/windowing/win10/WinSystemWin10.h
+@@ -90,6 +90,7 @@ class CWinSystemWin10 : public CWinSystemBase
+ 
+   // CWinSystemWin10
+   bool IsAlteringWindow() const { return m_IsAlteringWindow; }
++  void SetAlteringWindow(bool altering) { m_IsAlteringWindow = altering; }
+   virtual bool DPIChanged(WORD dpi, RECT windowRect) const;
+   bool IsMinimized() const { return m_bMinimized; }
+   void SetMinimized(bool minimized) { m_bMinimized = minimized; }
+diff --git a/xbmc/windowing/win10/WinSystemWin10DX.cpp b/xbmc/windowing/win10/WinSystemWin10DX.cpp
+index 5b2e8d914795..85311cb2aeb0 100644
+--- a/xbmc/windowing/win10/WinSystemWin10DX.cpp
++++ b/xbmc/windowing/win10/WinSystemWin10DX.cpp
+@@ -14,6 +14,8 @@
+ #include "utils/XTimeUtils.h"
+ #include "utils/log.h"
+ 
++#include "platform/win32/WIN32Util.h"
++
+ std::unique_ptr<CWinSystemBase> CWinSystemBase::CreateWinSystem()
+ {
+   return std::make_unique<CWinSystemWin10DX>();
+@@ -153,3 +155,33 @@ void CWinSystemWin10DX::UninitHooks()
+ void CWinSystemWin10DX::InitHooks(IDXGIOutput* pOutput)
+ {
+ }
++
++bool CWinSystemWin10DX::IsHDRDisplay()
++{
++  return (CWIN32Util::GetWindowsHDRStatus() != HDR_STATUS::HDR_UNSUPPORTED);
++}
++
++HDR_STATUS CWinSystemWin10DX::GetOSHDRStatus()
++{
++  return CWIN32Util::GetWindowsHDRStatus();
++}
++
++HDR_STATUS CWinSystemWin10DX::ToggleHDR()
++{
++  return m_deviceResources->ToggleHDR();
++}
++
++bool CWinSystemWin10DX::IsHDROutput() const
++{
++  return m_deviceResources->IsHDROutput();
++}
++
++void CWinSystemWin10DX::SetHdrMetaData(DXGI_HDR_METADATA_HDR10& hdr10) const
++{
++  m_deviceResources->SetHdrMetaData(hdr10);
++}
++
++void CWinSystemWin10DX::SetHdrColorSpace(const DXGI_COLOR_SPACE_TYPE colorSpace) const
++{
++  m_deviceResources->SetHdrColorSpace(colorSpace);
++}
+diff --git a/xbmc/windowing/win10/WinSystemWin10DX.h b/xbmc/windowing/win10/WinSystemWin10DX.h
+index 61c747224c4c..f83d1c01d334 100644
+--- a/xbmc/windowing/win10/WinSystemWin10DX.h
++++ b/xbmc/windowing/win10/WinSystemWin10DX.h
+@@ -8,6 +8,7 @@
+ 
+ #pragma once
+ 
++#include "HDRStatus.h"
+ #include "WinSystemWin10.h"
+ #include "rendering/dx/RenderSystemDX.h"
+ 
+@@ -62,6 +63,16 @@ class CWinSystemWin10DX : public CWinSystemWin10, public CRenderSystemDX
+ 
+   void ShowSplash(const std::string& message) override;
+ 
++  // HDR OS/display override
++  bool IsHDRDisplay() override;
++  HDR_STATUS ToggleHDR() override;
++  HDR_STATUS GetOSHDRStatus() override;
++
++  // HDR support
++  bool IsHDROutput() const;
++  void SetHdrMetaData(DXGI_HDR_METADATA_HDR10& hdr10) const;
++  void SetHdrColorSpace(const DXGI_COLOR_SPACE_TYPE colorSpace) const;
++
+ protected:
+   void SetDeviceFullScreen(bool fullScreen, RESOLUTION_INFO& res) override;
+   void ReleaseBackBuffer() override;
+diff --git a/xbmc/windowing/windows/WinSystemWin32.h b/xbmc/windowing/windows/WinSystemWin32.h
+index b5c8cef4ac40..539a8f13a15c 100644
+--- a/xbmc/windowing/windows/WinSystemWin32.h
++++ b/xbmc/windowing/windows/WinSystemWin32.h
+@@ -106,6 +106,7 @@ class CWinSystemWin32 : public CWinSystemBase
+   // CWinSystemWin32
+   HWND GetHwnd() const { return m_hWnd; }
+   bool IsAlteringWindow() const { return m_IsAlteringWindow; }
++  void SetAlteringWindow(bool altering) { m_IsAlteringWindow = altering; }
+   virtual bool DPIChanged(WORD dpi, RECT windowRect) const;
+   bool IsMinimized() const { return m_bMinimized; }
+   void SetMinimized(bool minimized) { m_bMinimized = minimized; }
+diff --git a/xbmc/windowing/windows/WinSystemWin32DX.cpp b/xbmc/windowing/windows/WinSystemWin32DX.cpp
+index 2b730154a8d6..083afb6e8525 100644
+--- a/xbmc/windowing/windows/WinSystemWin32DX.cpp
++++ b/xbmc/windowing/windows/WinSystemWin32DX.cpp
+@@ -19,6 +19,7 @@
+ #include "windowing/GraphicContext.h"
+ 
+ #include "platform/win32/CharsetConverter.h"
++#include "platform/win32/WIN32Util.h"
+ 
+ #include "system.h"
+ 
+@@ -380,3 +381,33 @@ HRESULT APIENTRY HookOpenAdapter10_2(D3D10DDIARG_OPENADAPTER *pOpenData)
+   }
+   return hr;
+ }
++
++bool CWinSystemWin32DX::IsHDRDisplay()
++{
++  return (CWIN32Util::GetWindowsHDRStatus() != HDR_STATUS::HDR_UNSUPPORTED);
++}
++
++HDR_STATUS CWinSystemWin32DX::GetOSHDRStatus()
++{
++  return CWIN32Util::GetWindowsHDRStatus();
++}
++
++HDR_STATUS CWinSystemWin32DX::ToggleHDR()
++{
++  return m_deviceResources->ToggleHDR();
++}
++
++bool CWinSystemWin32DX::IsHDROutput() const
++{
++  return m_deviceResources->IsHDROutput();
++}
++
++void CWinSystemWin32DX::SetHdrMetaData(DXGI_HDR_METADATA_HDR10& hdr10) const
++{
++  m_deviceResources->SetHdrMetaData(hdr10);
++}
++
++void CWinSystemWin32DX::SetHdrColorSpace(const DXGI_COLOR_SPACE_TYPE colorSpace) const
++{
++  m_deviceResources->SetHdrColorSpace(colorSpace);
++}
+diff --git a/xbmc/windowing/windows/WinSystemWin32DX.h b/xbmc/windowing/windows/WinSystemWin32DX.h
+index 78f2f52b510a..b57df21be270 100644
+--- a/xbmc/windowing/windows/WinSystemWin32DX.h
++++ b/xbmc/windowing/windows/WinSystemWin32DX.h
+@@ -8,6 +8,7 @@
+ 
+ #pragma once
+ 
++#include "HDRStatus.h"
+ #include "rendering/dx/RenderSystemDX.h"
+ #include "windowing/windows/WinSystemWin32.h"
+ 
+@@ -64,6 +65,16 @@ class CWinSystemWin32DX : public CWinSystemWin32, public CRenderSystemDX
+ 
+   void FixRefreshRateIfNecessary(const D3D10DDIARG_CREATERESOURCE* pResource) const;
+ 
++  // HDR OS/display override
++  bool IsHDRDisplay() override;
++  HDR_STATUS ToggleHDR() override;
++  HDR_STATUS GetOSHDRStatus() override;
++
++  // HDR support
++  bool IsHDROutput() const;
++  void SetHdrMetaData(DXGI_HDR_METADATA_HDR10& hdr10) const;
++  void SetHdrColorSpace(const DXGI_COLOR_SPACE_TYPE colorSpace) const;
++
+ protected:
+   void SetDeviceFullScreen(bool fullScreen, RESOLUTION_INFO& res) override;
+   void ReleaseBackBuffer() override;
