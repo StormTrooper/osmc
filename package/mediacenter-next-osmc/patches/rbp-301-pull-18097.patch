@@ -1,0 +1,168 @@
+From 3bbeb9dab43dd66d0d46abdc140c691570e0a61c Mon Sep 17 00:00:00 2001
+From: ronie <ronie@kodi.tv>
+Date: Mon, 22 Jun 2020 12:44:57 +0200
+Subject: [PATCH] [estuary] various osd fixes
+
+---
+ addons/skin.estuary/xml/MusicOSD.xml  | 26 +++++++++++++++++++++++---
+ addons/skin.estuary/xml/Variables.xml |  2 +-
+ addons/skin.estuary/xml/VideoOSD.xml  | 24 ++++++++++++++++++++++++
+ 3 files changed, 48 insertions(+), 4 deletions(-)
+
+diff --git a/addons/skin.estuary/xml/MusicOSD.xml b/addons/skin.estuary/xml/MusicOSD.xml
+index 844e47bb4899..1d96c2bc3ea3 100644
+--- a/addons/skin.estuary/xml/MusicOSD.xml
++++ b/addons/skin.estuary/xml/MusicOSD.xml
+@@ -38,6 +38,7 @@
+ 			<include>Animation_BottomSlide</include>
+ 			<bottom>0</bottom>
+ 			<height>120</height>
++			<include>Animation_BottomSlide</include>
+ 			<visible>!Window.IsActive(osdaudiosettings) + !Window.IsActive(osdvideosettings) + !Window.IsActive(playerprocessinfo)</visible>
+ 			<animation type="Visible" reversible="false">
+ 				<effect type="fade" start="0" end="100" time="300"/>
+@@ -250,9 +251,20 @@
+ 		<control type="group">
+ 			<bottom>0</bottom>
+ 			<height>120</height>
+-			<animation effect="fade" start="0" end="100" time="250">WindowOpen</animation>
+-			<animation effect="fade" start="100" end="0" time="250">WindowClose</animation>
+-			<include>Animation_BottomSlide</include>
++			<animation type="WindowOpen" condition="!Player.ShowInfo" reversible="False">
++				<effect type="fade" start="0" end="100" time="300"/>
++				<effect type="slide" start="0,200" end="0,0" time="300" tween="cubic" easing="out" />
++			</animation>
++			<animation type="WindowClose" condition="!Player.ShowInfo" reversible="False">
++				<effect type="fade" start="100" end="0" time="300"/>
++				<effect type="slide" start="0,0" end="0,200" time="300" tween="cubic" easing="out" />
++			</animation>
++			<animation type="WindowOpen" condition="Player.ShowInfo" reversible="False">
++				<effect type="fade" start="0" end="100" time="300"/>
++			</animation>
++			<animation type="WindowClose" condition="Player.ShowInfo" reversible="False">
++				<effect type="fade" start="100" end="0" time="300"/>
++			</animation>
+ 			<control type="button" id="87">
+ 				<include>HiddenObject</include>
+ 				<onup condition="Player.Forwarding | Player.Rewinding">PlayerControl(Play)</onup>
+@@ -275,6 +287,8 @@
+ 				<textureslidernib>osd/progress/nub_leftright.png</textureslidernib>
+ 				<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
+ 				<info>Player.Progress</info>
++				<onup>201</onup>
++				<ondown>200</ondown>
+ 				<visible>Player.SeekEnabled + !Control.HasFocus(87) + !MusicPlayer.Content(LiveTV)</visible>
+ 				<action>seek</action>
+ 			</control>
+@@ -289,6 +303,8 @@
+ 				<textureslidernib colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernib>
+ 				<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
+ 				<info>Player.Progress</info>
++				<onup>201</onup>
++				<ondown>200</ondown>
+ 				<visible>Player.SeekEnabled + Control.HasFocus(87) + !MusicPlayer.Content(LiveTV)</visible>
+ 				<action>seek</action>
+ 			</control>
+@@ -303,6 +319,8 @@
+ 				<textureslidernib>osd/progress/nub_leftright.png</textureslidernib>
+ 				<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
+ 				<info>PVR.TimeshiftProgressPlayPos</info>
++				<onup>201</onup>
++				<ondown>200</ondown>
+ 				<action>pvr.seek</action>
+ 				<visible>Player.SeekEnabled + !Control.HasFocus(87) + MusicPlayer.Content(LiveTV)</visible>
+ 			</control>
+@@ -317,6 +335,8 @@
+ 				<textureslidernib colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernib>
+ 				<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
+ 				<info>PVR.TimeshiftProgressPlayPos</info>
++				<onup>201</onup>
++				<ondown>200</ondown>
+ 				<action>pvr.seek</action>
+ 				<visible>Player.SeekEnabled + Control.HasFocus(87) + MusicPlayer.Content(LiveTV)</visible>
+ 			</control>
+diff --git a/addons/skin.estuary/xml/Variables.xml b/addons/skin.estuary/xml/Variables.xml
+index 748282ecd0cb..78f191aa52c5 100644
+--- a/addons/skin.estuary/xml/Variables.xml
++++ b/addons/skin.estuary/xml/Variables.xml
+@@ -208,7 +208,7 @@
+ 	</variable>
+ 	<variable name="SeekLabel">
+ 		<value condition="!String.IsEmpty(Player.SeekStepSize)">[COLOR button_focus]$LOCALIZE[773][/COLOR] $INFO[Player.SeekStepSize]</value>
+-		<value condition="!String.IsEmpty(Player.SeekOffset)">[COLOR button_focus]$LOCALIZE[773][/COLOR] $INFO[Player.SeekOffset]</value>
++		<value condition="!String.IsEmpty(Player.SeekOffset) + Player.DisplayAfterSeek">[COLOR button_focus]$LOCALIZE[773][/COLOR] $INFO[Player.SeekOffset]</value>
+ 		<value condition="Player.Paused">$LOCALIZE[112]</value>
+ 		<value condition="Player.Forwarding">$LOCALIZE[31039] $VAR[VideoPlayerForwardRewindVar]</value>
+ 		<value condition="Player.Rewinding">$LOCALIZE[31038] $VAR[VideoPlayerForwardRewindVar]</value>
+diff --git a/addons/skin.estuary/xml/VideoOSD.xml b/addons/skin.estuary/xml/VideoOSD.xml
+index f8200b19f1bc..b00b2fab9633 100644
+--- a/addons/skin.estuary/xml/VideoOSD.xml
++++ b/addons/skin.estuary/xml/VideoOSD.xml
+@@ -50,8 +50,10 @@
+ 				<height>50</height>
+ 				<label>$VAR[VideoOSDHelpTextVar]</label>
+ 				<visible>!Player.ShowInfo</visible>
++				<include>Animation_BottomSlide</include>
+ 			</control>
+ 			<control type="group" id="200">
++				<include>Animation_BottomSlide</include>
+ 				<control type="grouplist" id="201">
+ 					<left>20</left>
+ 					<top>90</top>
+@@ -211,6 +213,20 @@
+ 			</control>
+ 			<control type="group" id="6000">
+ 				<top>60</top>
++				<animation type="WindowOpen" condition="!Window.IsVisible(fullscreeninfo)" reversible="False">
++					<effect type="fade" start="0" end="100" time="300"/>
++					<effect type="slide" start="0,200" end="0,0" time="300" tween="cubic" easing="out" />
++				</animation>
++				<animation type="WindowClose" condition="!Window.IsVisible(fullscreeninfo)" reversible="False">
++					<effect type="fade" start="100" end="0" time="300"/>
++					<effect type="slide" start="0,0" end="0,200" time="300" tween="cubic" easing="out" />
++				</animation>
++				<animation type="WindowOpen" condition="Window.IsVisible(fullscreeninfo)" reversible="False">
++					<effect type="fade" start="0" end="100" time="300"/>
++				</animation>
++				<animation type="WindowClose" condition="Window.IsVisible(fullscreeninfo)" reversible="False">
++					<effect type="fade" start="100" end="0" time="300"/>
++				</animation>
+ 				<visible>Player.SeekEnabled</visible>
+ 				<control type="button" id="87">
+ 					<include>HiddenObject</include>
+@@ -230,6 +246,8 @@
+ 					<textureslidernib>osd/progress/nub_leftright.png</textureslidernib>
+ 					<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
+ 					<info>Player.Progress</info>
++					<onup>200</onup>
++					<ondown>200</ondown>
+ 					<action>seek</action>
+ 					<visible>!Control.HasFocus(87) + !VideoPlayer.Content(LiveTV)</visible>
+ 				</control>
+@@ -242,6 +260,8 @@
+ 					<textureslidernib colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernib>
+ 					<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
+ 					<info>Player.Progress</info>
++					<onup>200</onup>
++					<ondown>200</ondown>
+ 					<action>seek</action>
+ 					<visible>Control.HasFocus(87) + !VideoPlayer.Content(LiveTV)</visible>
+ 				</control>
+@@ -254,6 +274,8 @@
+ 					<textureslidernib>osd/progress/nub_leftright.png</textureslidernib>
+ 					<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
+ 					<info>PVR.TimeshiftProgressPlayPos</info>
++					<onup>200</onup>
++					<ondown>200</ondown>
+ 					<action>pvr.seek</action>
+ 					<visible>!Control.HasFocus(87) + VideoPlayer.Content(LiveTV)</visible>
+ 				</control>
+@@ -266,6 +288,8 @@
+ 					<textureslidernib colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernib>
+ 					<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
+ 					<info>PVR.TimeshiftProgressPlayPos</info>
++					<onup>200</onup>
++					<ondown>200</ondown>
+ 					<action>pvr.seek</action>
+ 					<visible>Control.HasFocus(87) + VideoPlayer.Content(LiveTV)</visible>
+ 				</control>
