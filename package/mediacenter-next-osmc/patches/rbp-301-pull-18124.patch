@@ -1,0 +1,18 @@
+From e9f119406abbdf1ba5ab860eb486dfd0344f1adc Mon Sep 17 00:00:00 2001
+From: Lukas Rusak <lorusak@gmail.com>
+Date: Wed, 1 Jul 2020 14:38:10 -0700
+Subject: [PATCH] [depends] bump libudfread to 1.1.0
+
+---
+ tools/depends/target/libudfread/UDFREAD-VERSION | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/depends/target/libudfread/UDFREAD-VERSION b/tools/depends/target/libudfread/UDFREAD-VERSION
+index 9a13b55e1e68..f0cb3bab5e71 100644
+--- a/tools/depends/target/libudfread/UDFREAD-VERSION
++++ b/tools/depends/target/libudfread/UDFREAD-VERSION
+@@ -1,3 +1,3 @@
+ LIBNAME=libudfread
+-VERSION=1.0.0
++VERSION=1.1.0
+ ARCHIVE=$(LIBNAME)-$(VERSION).tar.gz
