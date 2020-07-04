@@ -1,0 +1,24 @@
+From eb7ab2d6d680c4c7047beb062b375086b5b9637c Mon Sep 17 00:00:00 2001
+From: Matt Huisman <me@matthuisman.nz>
+Date: Sat, 9 May 2020 23:05:28 +1200
+Subject: [PATCH] Dont send referer on redirects. Same behaviour as ffmpeg ans
+ browsers
+
+---
+ xbmc/filesystem/CurlFile.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/xbmc/filesystem/CurlFile.cpp b/xbmc/filesystem/CurlFile.cpp
+index 3a02d7551fe9..138f697a31d7 100644
+--- a/xbmc/filesystem/CurlFile.cpp
++++ b/xbmc/filesystem/CurlFile.cpp
+@@ -538,7 +538,8 @@ void CCurlFile::SetCommonOptions(CReadState* state, bool failOnError /* = true *
+   else
+   {
+     g_curlInterface.easy_setopt(h, CURLOPT_REFERER, NULL);
+-    g_curlInterface.easy_setopt(h, CURLOPT_AUTOREFERER, CURL_ON);
++    // Do not send referer header on redirects (same behaviour as ffmpeg and browsers)
++    g_curlInterface.easy_setopt(h, CURLOPT_AUTOREFERER, CURL_OFF);
+   }
+ 
+   // setup any requested authentication
