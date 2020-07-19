@@ -1,0 +1,80 @@
+From 7c308a78852269a89228d465b76cf0e31b9df9c1 Mon Sep 17 00:00:00 2001
+From: finkleandeinhorn <david.drinfernoo@gmail.com>
+Date: Mon, 6 Jul 2020 17:39:23 -0700
+Subject: [PATCH] [interfaces/json-rpc] Retrieve ListItem properties via Files
+ API
+
+---
+ xbmc/FileItem.cpp                           |  7 +++++++
+ xbmc/interfaces/json-rpc/schema/types.json  | 11 ++++++++---
+ xbmc/interfaces/json-rpc/schema/version.txt |  2 +-
+ 3 files changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/xbmc/FileItem.cpp b/xbmc/FileItem.cpp
+index d0a86211a85f..ab14fa3355bf 100644
+--- a/xbmc/FileItem.cpp
++++ b/xbmc/FileItem.cpp
+@@ -668,6 +668,13 @@ void CFileItem::Serialize(CVariant& value) const
+ 
+   if (m_gameInfoTag)
+     (*m_gameInfoTag).Serialize(value["gameInfoTag"]);
++
++  if (!m_mapProperties.empty())
++  {
++    auto& customProperties = value["customproperties"];
++    for (const auto& prop : m_mapProperties)
++      customProperties[prop.first] = prop.second;
++  }
+ }
+ 
+ void CFileItem::ToSortable(SortItem &sortable, Field field) const
+diff --git a/xbmc/interfaces/json-rpc/schema/types.json b/xbmc/interfaces/json-rpc/schema/types.json
+index bf755dc5bf84..21a2347ed1fc 100644
+--- a/xbmc/interfaces/json-rpc/schema/types.json
++++ b/xbmc/interfaces/json-rpc/schema/types.json
+@@ -397,6 +397,10 @@
+       "label": { "type": "string", "required": true }
+     }
+   },
++  "Item.CustomProperties": {
++    "type": "object",
++    "additionalProperties": { "$ref": "Global.String.NotEmpty" }
++  },
+   "Media.Details.Base": {
+     "extends": "Item.Details.Base",
+     "properties": {
+@@ -1527,7 +1531,8 @@
+       "bitrate": { "type": "integer" },
+       "samplerate": { "type": "integer" },
+       "channels": { "type": "integer"},
+-      "albumstatus": { "type": "string" }
++      "albumstatus": { "type": "string" },
++      "customproperties": { "$ref": "Item.CustomProperties" }
+     }
+   },
+   "List.Fields.All": {
+@@ -1550,7 +1555,7 @@
+                 "contributors", "displaycomposer", "displayconductor", "displayorchestra", "displaylyricist",
+                 "userrating", "votes", "sortartist", "musicbrainzreleasegroupid", "mediapath", "dynpath",
+                 "isboxset", "totaldiscs", "disctitle", "releasedate", "originaldate", "bpm",
+-                "bitrate", "samplerate", "channels", "albumstatus", "datemodified", "datenew"]
++                "bitrate", "samplerate", "channels", "albumstatus", "datemodified", "datenew", "customproperties"]
+     }
+   },
+   "List.Item.All": {
+@@ -1582,7 +1587,7 @@
+                 "episodeguide", "uniqueid", "dateadded", "size", "lastmodified", "mimetype",
+                 "specialsortseason", "specialsortepisode", "sortartist", "musicbrainzreleasegroupid",
+                 "isboxset", "totaldiscs", "disctitle", "releasedate", "originaldate", "bpm",
+-                "bitrate", "samplerate", "channels", "datemodified", "datenew"]
++                "bitrate", "samplerate", "channels", "datemodified", "datenew", "customproperties"]
+     }
+   },
+   "List.Item.File": {
+diff --git a/xbmc/interfaces/json-rpc/schema/version.txt b/xbmc/interfaces/json-rpc/schema/version.txt
+index 6fb712b06fe3..1b9bbc7425da 100644
+--- a/xbmc/interfaces/json-rpc/schema/version.txt
++++ b/xbmc/interfaces/json-rpc/schema/version.txt
+@@ -1 +1 @@
+-JSONRPC_VERSION 11.11.0
++JSONRPC_VERSION 11.12.0

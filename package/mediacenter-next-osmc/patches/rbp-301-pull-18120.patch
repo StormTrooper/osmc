@@ -1,0 +1,22 @@
+From 158fcb78baecd0bdd4e6bd0e66c16a397a8c7dfc Mon Sep 17 00:00:00 2001
+From: ronie <ronie@kodi.tv>
+Date: Tue, 30 Jun 2020 22:17:30 +0200
+Subject: [PATCH] [estuary] handle up/down in fullscreeninfo
+
+---
+ addons/skin.estuary/xml/DialogFullScreenInfo.xml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/addons/skin.estuary/xml/DialogFullScreenInfo.xml b/addons/skin.estuary/xml/DialogFullScreenInfo.xml
+index 1adf38d6de10..7a0bed7d1566 100644
+--- a/addons/skin.estuary/xml/DialogFullScreenInfo.xml
++++ b/addons/skin.estuary/xml/DialogFullScreenInfo.xml
+@@ -11,6 +11,8 @@
+ 			<texturenofocus />
+ 			<onright>StepForward</onright>
+ 			<onleft>StepBack</onleft>
++			<onup>ChapterOrBigStepForward</onup>
++			<ondown>ChapterOrBigStepBack</ondown>
+ 			<onclick>OSD</onclick>
+ 		</control>
+ 	</controls>

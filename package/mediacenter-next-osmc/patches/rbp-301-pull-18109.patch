@@ -1,0 +1,25 @@
+From 3b0e8a0a49a30469d3e6956bed1936fd5cac5b63 Mon Sep 17 00:00:00 2001
+From: enen92 <92enen@gmail.com>
+Date: Sun, 28 Jun 2020 10:19:02 +0100
+Subject: [PATCH] Addons: fix definition of IsUserInstalled addons
+
+---
+ xbmc/filesystem/AddonsDirectory.cpp | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/xbmc/filesystem/AddonsDirectory.cpp b/xbmc/filesystem/AddonsDirectory.cpp
+index 5cbe7dd4aa5c..64b8f0eaac63 100644
+--- a/xbmc/filesystem/AddonsDirectory.cpp
++++ b/xbmc/filesystem/AddonsDirectory.cpp
+@@ -151,8 +151,9 @@ static bool IsDependencyType(TYPE type)
+ 
+ static bool IsUserInstalled(const AddonPtr& addon)
+ {
+-  return std::find_if(dependencyTypes.begin(), dependencyTypes.end(),
+-                      [&](TYPE type) { return addon->HasType(type); }) == dependencyTypes.end();
++  return std::find_if(dependencyTypes.begin(), dependencyTypes.end(), [&](TYPE type) {
++           return addon->MainType() == type;
++         }) == dependencyTypes.end();
+ }
+ 
+ static bool IsOrphaned(const AddonPtr& addon, const VECADDONS& all)

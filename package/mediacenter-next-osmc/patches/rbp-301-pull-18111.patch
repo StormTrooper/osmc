@@ -1,0 +1,574 @@
+From acae4ab7fd0a8fa939f5e034b6e17dc3e25a529e Mon Sep 17 00:00:00 2001
+From: howie-f <rftc@gmx.de>
+Date: Mon, 29 Jun 2020 21:04:27 +0200
+Subject: [PATCH 1/3] [addons] deny addon-updates from private repos if they
+ exist in official repos
+
+---
+ cmake/scripts/common/Macros.cmake |  5 ++
+ version.txt                       |  1 +
+ xbmc/CompileInfo.cpp.in           |  5 ++
+ xbmc/CompileInfo.h                |  5 +-
+ xbmc/addons/AddonDatabase.cpp     | 24 +++-----
+ xbmc/addons/AddonManager.cpp      | 92 ++++++++++++++++++++++++++++---
+ xbmc/addons/AddonManager.h        | 36 ++++++++++++
+ 7 files changed, 143 insertions(+), 25 deletions(-)
+
+diff --git a/cmake/scripts/common/Macros.cmake b/cmake/scripts/common/Macros.cmake
+index f7327e366b43..b5b8d62ec201 100644
+--- a/cmake/scripts/common/Macros.cmake
++++ b/cmake/scripts/common/Macros.cmake
+@@ -626,6 +626,9 @@ endfunction()
+ #   APP_VERSION_TAG_LC - lowercased app version tag
+ #   APP_VERSION - the app version (${APP_VERSION_MAJOR}.${APP_VERSION_MINOR}-${APP_VERSION_TAG})
+ #   APP_ADDON_API - the addon API version in the form of 16.9.702
++#   ADDON_REPOS - official addon repositories and their origin path delimited by pipe
++#                 - e.g. repository.xbmc.org|https://mirrors.kodi.tv -
++#                 (multiple repo/path-sets are delimited by comma)
+ #   FILE_VERSION - file version in the form of 16,9,702,0 - Windows only
+ #   JSONRPC_VERSION - the json api version in the form of 8.3.0
+ #
+@@ -646,6 +649,7 @@ macro(core_find_versions)
+   string(REGEX REPLACE "([^ ;]*) ([^;]*)" "\\1;\\2" version_list "${version_list};${json_version}")
+   set(version_props
+     ADDON_API
++    ADDON_REPOS
+     APP_NAME
+     APP_PACKAGE
+     COMPANY_NAME
+@@ -676,6 +680,7 @@ macro(core_find_versions)
+     string(TOLOWER ${APP_VERSION_TAG} APP_VERSION_TAG_LC)
+   endif()
+   string(REPLACE "." "," FILE_VERSION ${APP_ADDON_API}.0)
++  set(ADDON_REPOS ${APP_ADDON_REPOS})
+   set(JSONRPC_VERSION ${APP_JSONRPC_VERSION})
+ 
+   # Set defines used in addon.xml.in and read from versions.h to set add-on
+diff --git a/version.txt b/version.txt
+index 80f327761053..3b4e76bae249 100644
+--- a/version.txt
++++ b/version.txt
+@@ -7,6 +7,7 @@ VERSION_MINOR 0
+ VERSION_TAG ALPHA1
+ VERSION_CODE 18.9.701
+ ADDON_API 18.9.701
++ADDON_REPOS repository.xbmc.org|https://mirrors.kodi.tv
+ APP_PACKAGE org.xbmc.kodi
+ PACKAGE_IDENTITY XBMCFoundation.Kodi
+ PACKAGE_PUBLISHER C62BD90A-CDD8-477F-96C3-B25992247B97
+diff --git a/xbmc/CompileInfo.cpp.in b/xbmc/CompileInfo.cpp.in
+index ba4a11c7f6f8..95cf7662377a 100644
+--- a/xbmc/CompileInfo.cpp.in
++++ b/xbmc/CompileInfo.cpp.in
+@@ -55,6 +55,11 @@ const char* CCompileInfo::GetSCMID()
+   return "@APP_SCMID@";
+ }
+ 
++std::string CCompileInfo::GetOfficialAddonRepos()
++{
++  return "@APP_ADDON_REPOS@";
++}
++
+ const char* CCompileInfo::GetCopyrightYears()
+ {
+   return "@APP_COPYRIGHT_YEARS@";
+diff --git a/xbmc/CompileInfo.h b/xbmc/CompileInfo.h
+index 8190c950157f..40e82c011e99 100644
+--- a/xbmc/CompileInfo.h
++++ b/xbmc/CompileInfo.h
+@@ -18,8 +18,9 @@ class CCompileInfo
+   static const char* GetPackage();
+   static const char* GetClass();
+   static const char* GetAppName();
+-  static const char *GetSuffix();  // Git "Tag", e.g. alpha1
+-  static const char* GetSCMID();   // Git Revision
++  static const char* GetSuffix(); // Git "Tag", e.g. alpha1
++  static const char* GetSCMID(); // Git Revision
++  static std::string GetOfficialAddonRepos();
+   static const char* GetCopyrightYears();
+   static std::string GetBuildDate();
+   static const char* GetVersionCode();
+diff --git a/xbmc/addons/AddonDatabase.cpp b/xbmc/addons/AddonDatabase.cpp
+index edc63e9b59b7..39d48f73e778 100644
+--- a/xbmc/addons/AddonDatabase.cpp
++++ b/xbmc/addons/AddonDatabase.cpp
+@@ -608,11 +608,12 @@ bool CAddonDatabase::GetRepositoryContent(const std::string& id, VECADDONS& addo
+     }
+ 
+     {
+-      std::string sql = PrepareSQL(
+-          " SELECT * FROM addons"
+-          " JOIN addonlinkrepo ON addons.id=addonlinkrepo.idAddon"
+-          " WHERE addonlinkrepo.idRepo IN (%s)"
+-          " ORDER BY addons.addonID", StringUtils::Join(repoIds, ",").c_str());
++      std::string sql = PrepareSQL(" SELECT addons.*, repo.addonID AS repoID FROM addons"
++                                   " JOIN addonlinkrepo ON addons.id=addonlinkrepo.idAddon"
++                                   " JOIN repo ON repo.id=addonlinkrepo.idRepo"
++                                   " WHERE addonlinkrepo.idRepo IN (%s)"
++                                   " ORDER BY repo.addonID, addons.addonID",
++                                   StringUtils::Join(repoIds, ",").c_str());
+ 
+       auto start = XbmcThreads::SystemClockMillis();
+       m_pDS->query(sql);
+@@ -626,28 +627,19 @@ bool CAddonDatabase::GetRepositoryContent(const std::string& id, VECADDONS& addo
+       std::string addonId = m_pDS->fv("addonID").get_asString();
+       AddonVersion version(m_pDS->fv("version").get_asString());
+ 
+-      if (!result.empty() && result.back()->ID() == addonId && result.back()->Version() >= version)
+-      {
+-        // We already have a version of this addon in our list which is newer.
+-        m_pDS->next();
+-        continue;
+-      }
+-
+       CAddonInfoBuilder::CFromDB builder;
+       builder.SetId(addonId);
+       builder.SetVersion(version);
+       builder.SetName(m_pDS->fv("name").get_asString());
+       builder.SetSummary(m_pDS->fv("summary").get_asString());
+       builder.SetDescription(m_pDS->fv("description").get_asString());
++      builder.SetOrigin(m_pDS->fv("repoID").get_asString());
+       DeserializeMetadata(m_pDS->fv("metadata").get_asString(), builder);
+ 
+       auto addon = CAddonBuilder::Generate(builder.get(), ADDON_UNKNOWN);
+       if (addon)
+       {
+-        if (!result.empty() && result.back()->ID() == addonId)
+-          result.back() = std::move(addon);
+-        else
+-          result.push_back(std::move(addon));
++        result.emplace_back(addon);
+       }
+       else
+         CLog::Log(LOGWARNING, "CAddonDatabase: failed to build %s", addonId.c_str());
+diff --git a/xbmc/addons/AddonManager.cpp b/xbmc/addons/AddonManager.cpp
+index 8efbf5a1ae20..d7faa72b1725 100644
+--- a/xbmc/addons/AddonManager.cpp
++++ b/xbmc/addons/AddonManager.cpp
+@@ -8,8 +8,10 @@
+ 
+ #include "AddonManager.h"
+ 
++#include "CompileInfo.h"
+ #include "LangInfo.h"
+ #include "ServiceBroker.h"
++#include "addons/Addon.h"
+ #include "addons/AddonInstaller.h"
+ #include "addons/AddonSystemSettings.h"
+ #include "addons/addoninfo/AddonInfoBuilder.h"
+@@ -111,6 +113,8 @@ bool CAddonMgr::Init()
+     return false;
+   }
+ 
++  m_officialAddonRepos = StringUtils::Split(CCompileInfo::GetOfficialAddonRepos(), ',');
++
+   if (!m_database.Open())
+     CLog::Log(LOGFATAL, "ADDONS: Failed to open database");
+ 
+@@ -215,21 +219,46 @@ VECADDONS CAddonMgr::GetAvailableUpdates() const
+   VECADDONS installed;
+   VECADDONS all_addons;
+   m_database.GetRepositoryContent(all_addons);
+-  std::map<std::string, AddonPtr> last_versions;
++  std::map<std::string, AddonPtr> latestPrivateVersions;
++  std::map<std::string, AddonPtr> latestOfficialVersions;
++
+   for (const auto& addon : all_addons)
+   {
+-    const auto& latest_known = last_versions.find(addon->ID());
+-    if (latest_known == last_versions.end() || addon->Version() > latest_known->second->Version())
+-      last_versions[addon->ID()] = std::move(addon);
++    if (IsFromOfficialRepo(addon, true))
++    {
++      AddAddonIfLatest(addon, latestOfficialVersions);
++    }
++    else
++    {
++      AddAddonIfLatest(addon, latestPrivateVersions);
++    }
+   }
+ 
++  CLog::Log(LOGDEBUG, "ADDONS: official versions count : {}", latestOfficialVersions.size());
++  CLog::Log(LOGDEBUG, "ADDONS: private versions count : {}", latestPrivateVersions.size());
++
+   GetAddonsForUpdate(installed);
++
+   for (const auto& addon : installed)
+   {
+-    const auto& remote = last_versions.find(addon->ID());
+-    if (remote != last_versions.end() && remote->second->Version() > addon->Version())
+-      updates.emplace_back(std::move(remote->second));
++    CLog::Log(LOGDEBUG, "ADDONS: update check: addonID = {} / Origin = {}", addon->ID(),
++              addon->Origin());
++
++    if (ORIGIN_SYSTEM == addon->Origin())
++    {
++      FindAddonAndCheckForUpdate(addon, latestOfficialVersions, updates);
++    }
++    else
++    {
++      // if the addon is not found in an official repo...
++      if (!FindAddonAndCheckForUpdate(addon, latestOfficialVersions, updates))
++      {
++        // ...we move on and check the private/3rd party repo(s)
++        FindAddonAndCheckForUpdate(addon, latestPrivateVersions, updates);
++      }
++    }
+   }
++
+   CLog::Log(LOGDEBUG, "CAddonMgr::GetAvailableUpdates took %i ms", XbmcThreads::SystemClockMillis() - start);
+   return updates;
+ }
+@@ -1025,4 +1054,53 @@ void CAddonMgr::FindAddons(ADDON_INFO_LIST& addonmap, const std::string& path)
+   }
+ }
+ 
++bool CAddonMgr::IsFromOfficialRepo(const AddonPtr& addon) const
++{
++  return IsFromOfficialRepo(addon, false);
++}
++
++bool CAddonMgr::IsFromOfficialRepo(const AddonPtr& addon, bool bCheckAddonPath) const
++{
++  auto comparator = [&](const std::string& officialRepo) {
++    const std::vector<std::string> officialRepoProps = StringUtils::Split(officialRepo, '|');
++
++    if (bCheckAddonPath)
++    {
++      return (addon->Origin() == officialRepoProps.front() &&
++              StringUtils::StartsWithNoCase(addon->Path(), officialRepoProps.back()));
++    }
++
++    return addon->Origin() == officialRepoProps.front();
++  };
++
++  return addon->Origin() == ORIGIN_SYSTEM ||
++         std::any_of(m_officialAddonRepos.begin(), m_officialAddonRepos.end(), comparator);
++}
++
++void CAddonMgr::AddAddonIfLatest(const AddonPtr& addonToAdd,
++                                 std::map<std::string, AddonPtr>& map) const
++{
++  const auto& latestKnown = map.find(addonToAdd->ID());
++  if (latestKnown == map.end() || addonToAdd->Version() > latestKnown->second->Version())
++    map[addonToAdd->ID()] = addonToAdd;
++}
++
++bool CAddonMgr::FindAddonAndCheckForUpdate(const AddonPtr& addonToCheck,
++                                           const std::map<std::string, AddonPtr>& map,
++                                           VECADDONS& vecAddons) const
++{
++  const auto& remote = map.find(addonToCheck->ID());
++  if (remote != map.end()) // is addon in the desired map?
++  {
++    if (remote->second->Version() > addonToCheck->Version())
++    {
++      // queue addon update
++      vecAddons.emplace_back(remote->second);
++    }
++    return true;
++  }
++
++  return false;
++}
++
+ } /* namespace ADDON */
+diff --git a/xbmc/addons/AddonManager.h b/xbmc/addons/AddonManager.h
+index a230bb2e5bbb..9e8372a90de7 100644
+--- a/xbmc/addons/AddonManager.h
++++ b/xbmc/addons/AddonManager.h
+@@ -322,6 +322,13 @@ namespace ADDON
+      */
+     const std::string& GetTempAddonBasePath() { return m_tempAddonBasePath; }
+ 
++    /*!
++     * Checks if the origin-repository of a given addon is defined as official repo
++     * but does not check the origin path (e.g. https://mirrors.kodi.tv ...)
++     * \param addon pointer to addon to be checked
++     */
++    bool IsFromOfficialRepo(const AddonPtr& addon) const;
++
+   private:
+     CAddonMgr& operator=(CAddonMgr const&) = delete;
+ 
+@@ -366,6 +373,34 @@ namespace ADDON
+      */
+     void InstallAddonUpdates(VECADDONS& updates, bool wait) const;
+ 
++    /*!
++     * Adds an addon to a repository map
++     * \param addonToAdd the addon that should be added to the map
++     * \param map the desired target map (e.g. official, private...)
++     */
++    void AddAddonIfLatest(const AddonPtr& addonToAdd, std::map<std::string, AddonPtr>& map) const;
++
++    /*!
++     * Looks up an addon in a given repository map and then
++     * queues the update if a newer version is available
++     * \param addonToCheck the addon we want to find and version-check
++     * \param map the repository-map we want to check against
++     * \param vecAddons the target vector, into which queued addons will be emplaced
++     * \return true if the addon was found in the desired map
++     * \return false if the addon does NOT exist in the map
++     */
++    bool FindAddonAndCheckForUpdate(const AddonPtr& addonToCheck,
++                                    const std::map<std::string, AddonPtr>& map,
++                                    VECADDONS& vecAddons) const;
++
++    /*!
++     * Checks if the origin-repository of a given addon is defined as official repo
++     * and verify if the origin-path is also defined and matching
++     * \param addon pointer to addon to be checked
++     * \param bCheckAddonPath also check origin path
++     */
++    bool IsFromOfficialRepo(const AddonPtr& addon, bool bCheckAddonPath) const;
++
+     // This guards the addon installation process to make sure
+     // addon updates are not installed concurrently
+     // while the migration is running. Addon updates can be triggered
+@@ -382,6 +417,7 @@ namespace ADDON
+     CBlockingEventSource<AddonEvent> m_unloadEvents;
+     std::set<std::string> m_systemAddons;
+     std::set<std::string> m_optionalAddons;
++    std::vector<std::string> m_officialAddonRepos;
+     ADDON_INFO_LIST m_installedAddons;
+ 
+     // Temporary path given to add-ons, whose content is deleted when Kodi is stopped
+
+From b9ad620909cdc127c23171b5113abff72dab36f3 Mon Sep 17 00:00:00 2001
+From: howie-f <rftc@gmx.de>
+Date: Sun, 5 Jul 2020 09:27:16 +0200
+Subject: [PATCH 2/3] [addons] introduce setting for addon updatemode
+
+---
+ .../resources/strings.po                      | 25 +++++++++++++++++--
+ system/settings/settings.xml                  | 14 +++++++++++
+ xbmc/addons/AddonManager.cpp                  | 19 +++++++++++---
+ xbmc/addons/AddonSystemSettings.cpp           |  7 ++++++
+ xbmc/addons/AddonSystemSettings.h             | 14 +++++++++++
+ xbmc/settings/Settings.cpp                    |  1 +
+ xbmc/settings/Settings.h                      |  1 +
+ 7 files changed, 75 insertions(+), 6 deletions(-)
+
+diff --git a/addons/resource.language.en_gb/resources/strings.po b/addons/resource.language.en_gb/resources/strings.po
+index 64432e77004d..4334be50cf27 100644
+--- a/addons/resource.language.en_gb/resources/strings.po
++++ b/addons/resource.language.en_gb/resources/strings.po
+@@ -20024,7 +20024,16 @@ msgctxt "#36421"
+ msgid "Bypassing VDPAU mixer saves resources on low power systems but slightly reduces picture quality."
+ msgstr ""
+ 
+-#empty strings from id 36422 to 36423
++#: system/settings/settings.xml
++msgctxt "#36422"
++msgid "Update official add-ons from"
++msgstr ""
++
++#. Description of setting with label #36422 "Update official add-ons from"
++#: system/settings/settings.xml
++msgctxt "#36423"
++msgid "By default, add-ons from official repositories will be prevented from being auto-updated from private repositories. For cases such as updating from an add-ons beta repository this option can be switched to [Any repositories] (bear in mind this is a less secure option and enabling it could cause incompatibility and crashes)."
++msgstr ""
+ 
+ #: system/settings/settings.xml
+ msgctxt "#36424"
+@@ -20099,7 +20108,19 @@ msgctxt "#36436"
+ msgid "Select OS keyboard layout."
+ msgstr ""
+ 
+-#empty strings from id 36437 to 36441
++#. Option for setting "System -> Add-ons -> Update official add-ons from"
++#: system/settings/settings.xml
++msgctxt "#36437"
++msgid "Official repositories only (default)"
++msgstr ""
++
++#. Option for setting "System -> Add-ons -> Update official add-ons from"
++#: system/settings/settings.xml
++msgctxt "#36438"
++msgid "Any repositories"
++msgstr ""
++
++#empty strings from id 36439 to 36441
+ 
+ #. Description of setting "System -> Audio output -> Volume control steps" with label #1302
+ #: system/settings/settings.xml
+diff --git a/system/settings/settings.xml b/system/settings/settings.xml
+index def37409369d..e72b1971a6ef 100755
+--- a/system/settings/settings.xml
++++ b/system/settings/settings.xml
+@@ -2941,6 +2941,20 @@
+           <default>false</default>
+           <control type="toggle" />
+         </setting>
++        <setting id="addons.updatemode" type="integer" parent="addons.unknownsources" label="36422" help="36423">
++          <level>1</level>
++          <default>0</default>
++          <constraints>
++            <options>
++              <option label="36437">0</option> <!-- OFFICIAL_ONLY -->
++              <option label="36438">1</option> <!-- ANY_REPOSITORY -->
++            </options>
++          </constraints>
++          <dependencies>
++            <dependency type="enable" setting="addons.unknownsources" operator="is">true</dependency>
++          </dependencies>
++          <control type="list" format="string" />
++        </setting>
+       </group>
+     </category>
+     <category id="logging" label="14092" help="36391">
+diff --git a/xbmc/addons/AddonManager.cpp b/xbmc/addons/AddonManager.cpp
+index d7faa72b1725..9f3413bcee1f 100644
+--- a/xbmc/addons/AddonManager.cpp
++++ b/xbmc/addons/AddonManager.cpp
+@@ -222,15 +222,26 @@ VECADDONS CAddonMgr::GetAvailableUpdates() const
+   std::map<std::string, AddonPtr> latestPrivateVersions;
+   std::map<std::string, AddonPtr> latestOfficialVersions;
+ 
++  const AddonRepoUpdateMode updateMode =
++      CAddonSystemSettings::GetInstance().GetAddonRepoUpdateMode();
++  CLog::Log(LOGDEBUG, "ADDONS: repo update mode set to : {}", static_cast<int>(updateMode));
++
+   for (const auto& addon : all_addons)
+   {
+-    if (IsFromOfficialRepo(addon, true))
++    if (updateMode == AddonRepoUpdateMode::OFFICIAL_ONLY)
+     {
+-      AddAddonIfLatest(addon, latestOfficialVersions);
++      if (IsFromOfficialRepo(addon, true))
++      {
++        AddAddonIfLatest(addon, latestOfficialVersions);
++      }
++      else
++      {
++        AddAddonIfLatest(addon, latestPrivateVersions);
++      }
+     }
+-    else
++    else if (updateMode == AddonRepoUpdateMode::ANY_REPOSITORY)
+     {
+-      AddAddonIfLatest(addon, latestPrivateVersions);
++      AddAddonIfLatest(addon, latestOfficialVersions);
+     }
+   }
+ 
+diff --git a/xbmc/addons/AddonSystemSettings.cpp b/xbmc/addons/AddonSystemSettings.cpp
+index 7581180dd909..cd9f4b1654f3 100644
+--- a/xbmc/addons/AddonSystemSettings.cpp
++++ b/xbmc/addons/AddonSystemSettings.cpp
+@@ -121,4 +121,11 @@ int CAddonSystemSettings::GetAddonAutoUpdateMode() const
+   return CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(
+       CSettings::SETTING_ADDONS_AUTOUPDATES);
+ }
++
++AddonRepoUpdateMode CAddonSystemSettings::GetAddonRepoUpdateMode() const
++{
++  const int updateMode = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(
++      CSettings::SETTING_ADDONS_UPDATEMODE);
++  return static_cast<AddonRepoUpdateMode>(updateMode);
++}
+ }
+diff --git a/xbmc/addons/AddonSystemSettings.h b/xbmc/addons/AddonSystemSettings.h
+index 4ffbbd8d3fe8..6f7f6e4744d8 100644
+--- a/xbmc/addons/AddonSystemSettings.h
++++ b/xbmc/addons/AddonSystemSettings.h
+@@ -21,6 +21,12 @@ const int AUTO_UPDATES_ON = 0;
+ const int AUTO_UPDATES_NOTIFY = 1;
+ const int AUTO_UPDATES_NEVER = 2;
+ 
++enum class AddonRepoUpdateMode
++{
++  OFFICIAL_ONLY = 0,
++  ANY_REPOSITORY = 1
++};
++
+ class CAddonSystemSettings : public ISettingCallback
+ {
+ public:
+@@ -39,6 +45,14 @@ class CAddonSystemSettings : public ISettingCallback
+   */
+   int GetAddonAutoUpdateMode() const;
+ 
++
++  /*!
++   * Gets Kodi preferred addon repository update mode
++   *
++   * @return the preferred mode value
++   */
++  AddonRepoUpdateMode GetAddonRepoUpdateMode() const;
++
+   /*!
+    * Attempt to unset addon as active. Returns true if addon is no longer active,
+    * false if it could not be unset (e.g. if the addon is the default)
+diff --git a/xbmc/settings/Settings.cpp b/xbmc/settings/Settings.cpp
+index 77e31ba1afa7..8680b105aee8 100644
+--- a/xbmc/settings/Settings.cpp
++++ b/xbmc/settings/Settings.cpp
+@@ -415,6 +415,7 @@ const std::string CSettings::SETTING_ADDONS_AUTOUPDATES = "general.addonupdates"
+ const std::string CSettings::SETTING_ADDONS_NOTIFICATIONS = "general.addonnotifications";
+ const std::string CSettings::SETTING_ADDONS_SHOW_RUNNING = "addons.showrunning";
+ const std::string CSettings::SETTING_ADDONS_ALLOW_UNKNOWN_SOURCES = "addons.unknownsources";
++const std::string CSettings::SETTING_ADDONS_UPDATEMODE = "addons.updatemode";
+ const std::string CSettings::SETTING_ADDONS_MANAGE_DEPENDENCIES = "addons.managedependencies";
+ const std::string CSettings::SETTING_GENERAL_ADDONFOREIGNFILTER = "general.addonforeignfilter";
+ const std::string CSettings::SETTING_GENERAL_ADDONBROKENFILTER = "general.addonbrokenfilter";
+diff --git a/xbmc/settings/Settings.h b/xbmc/settings/Settings.h
+index f56ebe9a40db..220bbd716e1b 100644
+--- a/xbmc/settings/Settings.h
++++ b/xbmc/settings/Settings.h
+@@ -379,6 +379,7 @@ class CSettings : public CSettingsBase, public CSettingCreator, public CSettingC
+   static const std::string SETTING_ADDONS_SHOW_RUNNING;
+   static const std::string SETTING_ADDONS_MANAGE_DEPENDENCIES;
+   static const std::string SETTING_ADDONS_ALLOW_UNKNOWN_SOURCES;
++  static const std::string SETTING_ADDONS_UPDATEMODE;
+   static const std::string SETTING_GENERAL_ADDONFOREIGNFILTER;
+   static const std::string SETTING_GENERAL_ADDONBROKENFILTER;
+   static const std::string SETTING_SOURCE_VIDEOS;
+
+From 7a87c697d64616d6693c8d33777b14af8a0026af Mon Sep 17 00:00:00 2001
+From: howie-f <rftc@gmx.de>
+Date: Wed, 15 Jul 2020 11:49:47 +0200
+Subject: [PATCH 3/3] [addons] add property: IsFromOfficialRepo
+
+---
+ xbmc/GUIInfoManager.cpp             | 8 ++++++++
+ xbmc/filesystem/AddonsDirectory.cpp | 2 ++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/xbmc/GUIInfoManager.cpp b/xbmc/GUIInfoManager.cpp
+index 1d112c4dd218..828fe1da269a 100644
+--- a/xbmc/GUIInfoManager.cpp
++++ b/xbmc/GUIInfoManager.cpp
+@@ -4373,6 +4373,14 @@ const infomap container_str[]  = {{ "property",         CONTAINER_PROPERTY },
+ ///     replaces `ListItem.Property(Addon.UpdateAvail)`.
+ ///     <p>
+ ///   }
++///   \table_row3{   <b>`ListItem.Property(Addon.IsFromOfficialRepo)`</b>,
++///                  \anchor ListItem_Property_AddonIsFromOfficialRepo
++///                  _boolean_,
++///     @return **True** if this add-on is from an official repository.
++///     <p><hr>
++///     @skinning_v19 **[New Boolean Condition]** \link ListItem_Property_AddonIsFromOfficialRepo `ListItem.Property(Addon.IsFromOfficialRepo)`\endlink
++///     <p>
++///   }
+ ///   \table_row3{   <b>`ListItem.Label`</b>,
+ ///                  \anchor ListItem_Label
+ ///                  _string_,
+diff --git a/xbmc/filesystem/AddonsDirectory.cpp b/xbmc/filesystem/AddonsDirectory.cpp
+index f90e68c9123d..b529471fa0c3 100644
+--- a/xbmc/filesystem/AddonsDirectory.cpp
++++ b/xbmc/filesystem/AddonsDirectory.cpp
+@@ -787,10 +787,12 @@ void CAddonsDirectory::GenerateAddonListing(const CURL &path,
+     bool installed = CServiceBroker::GetAddonMgr().IsAddonInstalled(addon->ID());
+     bool disabled = CServiceBroker::GetAddonMgr().IsAddonDisabled(addon->ID());
+     bool hasUpdate = outdated.find(addon->ID()) != outdated.end();
++    bool fromOfficialRepo = CServiceBroker::GetAddonMgr().IsFromOfficialRepo(addon);
+ 
+     pItem->SetProperty("Addon.IsInstalled", installed);
+     pItem->SetProperty("Addon.IsEnabled", installed && !disabled);
+     pItem->SetProperty("Addon.HasUpdate", hasUpdate);
++    pItem->SetProperty("Addon.IsFromOfficialRepo", fromOfficialRepo);
+ 
+     if (installed)
+       pItem->SetProperty("Addon.Status", g_localizeStrings.Get(305));

@@ -1,0 +1,50 @@
+From 58c4698db06388f3f09e72e9ebb2e2f7fdd8077f Mon Sep 17 00:00:00 2001
+From: fritsch <Peter.Fruehberger@gmail.com>
+Date: Fri, 26 Jun 2020 07:03:56 +0200
+Subject: [PATCH] VDPAU: Implement support for VP9 Profile0
+
+---
+ xbmc/cores/VideoPlayer/DVDCodecs/Video/VDPAU.cpp | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/VDPAU.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/VDPAU.cpp
+index 65087e506501..0d878809420f 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/VDPAU.cpp
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/VDPAU.cpp
+@@ -51,6 +51,9 @@ CDecoder::Desc decoder_profiles[] = {
+ #ifdef VDP_DECODER_PROFILE_HEVC_MAIN
+ {"HEVC_MAIN", VDP_DECODER_PROFILE_HEVC_MAIN},
+ #endif
++#ifdef VDP_DECODER_PROFILE_VP9_PROFILE_0
++{"VP9_PROFILE_0", VDP_DECODER_PROFILE_VP9_PROFILE_0},
++#endif
+ };
+ 
+ static struct SInterlaceMapping
+@@ -850,6 +853,12 @@ void CDecoder::ReadFormatOf( AVCodecID codec
+       vdp_decoder_profile = VDP_DECODER_PROFILE_HEVC_MAIN;
+       vdp_chroma_type     = VDP_CHROMA_TYPE_420;
+       break;
++#endif
++#ifdef VDP_DECODER_PROFILE_VP9_PROFILE_0
++    case AV_CODEC_ID_VP9:
++    vdp_decoder_profile = VDP_DECODER_PROFILE_VP9_PROFILE_0;
++    vdp_chroma_type = VDP_CHROMA_TYPE_420;
++    break;
+ #endif
+     case AV_CODEC_ID_WMV3:
+       vdp_decoder_profile = VDP_DECODER_PROFILE_VC1_MAIN;
+@@ -903,6 +912,13 @@ bool CDecoder::ConfigVDPAU(AVCodecContext* avctx, int ref_frames)
+     // reference number, so we force the maximum number (source: upstream ffmpeg)
+     m_vdpauConfig.maxReferences = 16;
+   }
++  else if (avctx->codec_id == AV_CODEC_ID_VP9)
++  {
++    if (avctx->profile != FF_PROFILE_VP9_0)
++      return false;
++
++    m_vdpauConfig.maxReferences = 8;
++  }
+   else
+     m_vdpauConfig.maxReferences = 2;
+ 

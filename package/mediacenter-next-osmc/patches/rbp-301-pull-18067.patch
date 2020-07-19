@@ -1,0 +1,28 @@
+From 133b9564733eea6d24d07ccd1874d882d5f9ba9e Mon Sep 17 00:00:00 2001
+From: Roman Miroshnychenko <roman.miroshnychenko@comeet.co>
+Date: Tue, 16 Jun 2020 12:53:07 +0300
+Subject: [PATCH] Fix allocating buffer for a Python unicode string
+
+---
+ xbmc/interfaces/python/typemaps/python.buffer.intm | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/xbmc/interfaces/python/typemaps/python.buffer.intm b/xbmc/interfaces/python/typemaps/python.buffer.intm
+index 76c09cb78329..57f350d81f26 100644
+--- a/xbmc/interfaces/python/typemaps/python.buffer.intm
++++ b/xbmc/interfaces/python/typemaps/python.buffer.intm
+@@ -9,10 +9,11 @@
+ %>
+     if (PyUnicode_Check(${slarg}))
+     {
+-      const char* str = PyUnicode_AsUTF8(${slarg});
+-      size_t size = (size_t)PyUnicode_GetLength(${slarg});
++      Py_ssize_t pysize;
++      const char* str = PyUnicode_AsUTF8AndSize(${slarg}, &pysize);
++      size_t size = static_cast<size_t>(pysize);
+       ${api}.allocate(size);
+-      ${api}.put(str,size);
++      ${api}.put(str, size);
+       ${api}.flip(); // prepare the buffer for reading from
+     }
+     else if (PyByteArray_Check(${slarg}))

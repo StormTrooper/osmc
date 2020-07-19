@@ -1,0 +1,202 @@
+From 03d2c8e3bb2f2eb8e070c5e0535701269ecf1516 Mon Sep 17 00:00:00 2001
+From: Alwin Esch <alwin.esch@web.de>
+Date: Mon, 29 Jun 2020 21:41:14 +0200
+Subject: [PATCH 1/3] [addons] add callback to check setting is default
+
+This add the function "bool kodi::IsSettingUsingDefault(const std::string& settingName)"
+to check by addon that the current settings value is only the default and not
+edited by user.
+---
+ xbmc/addons/interfaces/AddonBase.cpp          | 30 +++++++++++++++++++
+ xbmc/addons/interfaces/AddonBase.h            |  1 +
+ .../include/kodi/AddonBase.h                  | 16 ++++++++++
+ .../include/kodi/c-api/addon_base.h           |  3 ++
+ 4 files changed, 50 insertions(+)
+
+diff --git a/xbmc/addons/interfaces/AddonBase.cpp b/xbmc/addons/interfaces/AddonBase.cpp
+index 930f435c8c2b..9e7ef679e59b 100644
+--- a/xbmc/addons/interfaces/AddonBase.cpp
++++ b/xbmc/addons/interfaces/AddonBase.cpp
+@@ -50,6 +50,7 @@ bool Interface_Base::InitInterface(CAddonDll* addon,
+   addonInterface.toKodi->get_addon_path = get_addon_path;
+   addonInterface.toKodi->get_base_user_path = get_base_user_path;
+   addonInterface.toKodi->addon_log_msg = addon_log_msg;
++  addonInterface.toKodi->is_setting_using_default = is_setting_using_default;
+   addonInterface.toKodi->get_setting_bool = get_setting_bool;
+   addonInterface.toKodi->get_setting_int = get_setting_int;
+   addonInterface.toKodi->get_setting_float = get_setting_float;
+@@ -198,6 +199,35 @@ void Interface_Base::addon_log_msg(void* kodiBase, const int addonLogLevel, cons
+   CLog::Log(logLevel, "AddOnLog: {}: {}", addon->ID(), strMessage);
+ }
+ 
++bool Interface_Base::is_setting_using_default(void* kodiBase, const char* id)
++{
++  CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
++  if (addon == nullptr || id == nullptr)
++  {
++    CLog::Log(LOGERROR, "Interface_Base::{} - invalid data (addon='{}', id='{}')", __func__,
++              kodiBase, static_cast<const void*>(id));
++
++    return false;
++  }
++
++  if (!addon->ReloadSettings())
++  {
++    CLog::Log(LOGERROR, "Interface_Base::{} - couldn't get settings for add-on '{}'", __func__,
++              addon->Name());
++    return false;
++  }
++
++  auto setting = addon->GetSettings()->GetSetting(id);
++  if (setting == nullptr)
++  {
++    CLog::Log(LOGERROR, "Interface_Base::{} - can't find setting '{}' in '{}'", __func__, id,
++              addon->Name());
++    return false;
++  }
++
++  return setting->IsDefault();
++}
++
+ bool Interface_Base::get_setting_bool(void* kodiBase, const char* id, bool* value)
+ {
+   CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
+diff --git a/xbmc/addons/interfaces/AddonBase.h b/xbmc/addons/interfaces/AddonBase.h
+index 67ec03527476..58270a6ba65d 100644
+--- a/xbmc/addons/interfaces/AddonBase.h
++++ b/xbmc/addons/interfaces/AddonBase.h
+@@ -55,6 +55,7 @@ struct Interface_Base
+   static char* get_addon_path(void* kodiBase);
+   static char* get_base_user_path(void* kodiBase);
+   static void addon_log_msg(void* kodiBase, const int addonLogLevel, const char* strMessage);
++  static bool is_setting_using_default(void* kodiBase, const char* id);
+   static bool get_setting_bool(void* kodiBase, const char* id, bool* value);
+   static bool get_setting_int(void* kodiBase, const char* id, int* value);
+   static bool get_setting_float(void* kodiBase, const char* id, float* value);
+diff --git a/xbmc/addons/kodi-addon-dev-kit/include/kodi/AddonBase.h b/xbmc/addons/kodi-addon-dev-kit/include/kodi/AddonBase.h
+index 0653db950651..b0fddda87cf1 100644
+--- a/xbmc/addons/kodi-addon-dev-kit/include/kodi/AddonBase.h
++++ b/xbmc/addons/kodi-addon-dev-kit/include/kodi/AddonBase.h
+@@ -688,6 +688,22 @@ inline void ATTRIBUTE_HIDDEN Log(const AddonLog loglevel, const char* format, ..
+ ///
+ /*!@{*/
+ 
++//==============================================================================
++/// @brief Check the given setting name is set to default value.
++///
++/// The setting name relate to names used in his <b>settings.xml</b> file.
++///
++/// @param[in] settingName The name of asked setting
++/// @return true if setting is the default
++///
++inline bool ATTRIBUTE_HIDDEN IsSettingUsingDefault(const std::string& settingName)
++{
++  using namespace kodi::addon;
++  return CAddonBase::m_interface->toKodi->is_setting_using_default(
++      CAddonBase::m_interface->toKodi->kodiBase, settingName.c_str());
++}
++//------------------------------------------------------------------------------
++
+ //==============================================================================
+ /// @brief Check and get a string setting value.
+ ///
+diff --git a/xbmc/addons/kodi-addon-dev-kit/include/kodi/c-api/addon_base.h b/xbmc/addons/kodi-addon-dev-kit/include/kodi/c-api/addon_base.h
+index bc392c4740bd..1924d7711b75 100644
+--- a/xbmc/addons/kodi-addon-dev-kit/include/kodi/c-api/addon_base.h
++++ b/xbmc/addons/kodi-addon-dev-kit/include/kodi/c-api/addon_base.h
+@@ -190,6 +190,9 @@ extern "C"
+     struct AddonToKodiFuncTable_kodi_filesystem* kodi_filesystem;
+     struct AddonToKodiFuncTable_kodi_gui* kodi_gui;
+     struct AddonToKodiFuncTable_kodi_network* kodi_network;
++
++    // Move up by min version change about
++    bool (*is_setting_using_default)(void* kodiBase, const char* id);
+   } AddonToKodiFuncTable_Addon;
+ 
+   /*!
+
+From 5ff972a51dec199bad2156ccda383bedd2360b07 Mon Sep 17 00:00:00 2001
+From: Alwin Esch <alwin.esch@web.de>
+Date: Sun, 28 Jun 2020 18:10:43 +0200
+Subject: [PATCH 2/3] [addons] use HasSettings instead of ReloadSettings
+
+The "HasSettings" to confirm available and loaded by this call.
+On other before was the whole xml loaded on every call where needed
+more work and has produced also problems if a settings value was
+asked by a loop on addon.
+---
+ xbmc/addons/interfaces/AddonBase.cpp | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/xbmc/addons/interfaces/AddonBase.cpp b/xbmc/addons/interfaces/AddonBase.cpp
+index 9e7ef679e59b..6c3633c1945f 100644
+--- a/xbmc/addons/interfaces/AddonBase.cpp
++++ b/xbmc/addons/interfaces/AddonBase.cpp
+@@ -210,7 +210,7 @@ bool Interface_Base::is_setting_using_default(void* kodiBase, const char* id)
+     return false;
+   }
+ 
+-  if (!addon->ReloadSettings())
++  if (!addon->HasSettings())
+   {
+     CLog::Log(LOGERROR, "Interface_Base::{} - couldn't get settings for add-on '{}'", __func__,
+               addon->Name());
+@@ -239,7 +239,7 @@ bool Interface_Base::get_setting_bool(void* kodiBase, const char* id, bool* valu
+     return false;
+   }
+ 
+-  if (!addon->ReloadSettings())
++  if (!addon->HasSettings())
+   {
+     CLog::Log(LOGERROR, "Interface_Base::{} - couldn't get settings for add-on '{}'", __func__,
+               addon->Name());
+@@ -276,7 +276,7 @@ bool Interface_Base::get_setting_int(void* kodiBase, const char* id, int* value)
+     return false;
+   }
+ 
+-  if (!addon->ReloadSettings())
++  if (!addon->HasSettings())
+   {
+     CLog::Log(LOGERROR, "Interface_Base::{} - couldn't get settings for add-on '{}'", __func__,
+               addon->Name());
+@@ -316,7 +316,7 @@ bool Interface_Base::get_setting_float(void* kodiBase, const char* id, float* va
+     return false;
+   }
+ 
+-  if (!addon->ReloadSettings())
++  if (!addon->HasSettings())
+   {
+     CLog::Log(LOGERROR, "Interface_Base::{} - couldn't get settings for add-on '{}'", __func__,
+               addon->Name());
+@@ -353,7 +353,7 @@ bool Interface_Base::get_setting_string(void* kodiBase, const char* id, char** v
+     return false;
+   }
+ 
+-  if (!addon->ReloadSettings())
++  if (!addon->HasSettings())
+   {
+     CLog::Log(LOGERROR, "Interface_Base::{} - couldn't get settings for add-on '{}'", __func__,
+               addon->Name());
+
+From 1ab13bf5c1ffccc62bf5c2f40159e95f0f015531 Mon Sep 17 00:00:00 2001
+From: Alwin Esch <alwin.esch@web.de>
+Date: Sun, 28 Jun 2020 17:43:53 +0200
+Subject: [PATCH 3/3] [addons] increase binary addon base version to 1.2.4
+
+---
+ xbmc/addons/kodi-addon-dev-kit/include/kodi/versions.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xbmc/addons/kodi-addon-dev-kit/include/kodi/versions.h b/xbmc/addons/kodi-addon-dev-kit/include/kodi/versions.h
+index 86045c7faee5..041e22b1fa64 100644
+--- a/xbmc/addons/kodi-addon-dev-kit/include/kodi/versions.h
++++ b/xbmc/addons/kodi-addon-dev-kit/include/kodi/versions.h
+@@ -34,7 +34,7 @@
+ // because cmake uses this area in this form to perform its addon dependency
+ // check.
+ // clang-format off
+-#define ADDON_GLOBAL_VERSION_MAIN                     "1.2.3"
++#define ADDON_GLOBAL_VERSION_MAIN                     "1.2.4"
+ #define ADDON_GLOBAL_VERSION_MAIN_MIN                 "1.2.0"
+ #define ADDON_GLOBAL_VERSION_MAIN_XML_ID              "kodi.binary.global.main"
+ #define ADDON_GLOBAL_VERSION_MAIN_DEPENDS             "AddonBase.h" \

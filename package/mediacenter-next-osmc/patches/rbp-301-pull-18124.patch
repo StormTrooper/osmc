@@ -1,12 +1,121 @@
-From e9f119406abbdf1ba5ab860eb486dfd0344f1adc Mon Sep 17 00:00:00 2001
+From e55f09753272c71de4dcc712a71563b328474876 Mon Sep 17 00:00:00 2001
 From: Lukas Rusak <lorusak@gmail.com>
 Date: Wed, 1 Jul 2020 14:38:10 -0700
 Subject: [PATCH] [depends] bump libudfread to 1.1.0
 
 ---
- tools/depends/target/libudfread/UDFREAD-VERSION | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ .../BuildDependencies/scripts/0_package.target-win10-arm.list | 4 ++--
+ .../scripts/0_package.target-win10-win32.list                 | 4 ++--
+ .../BuildDependencies/scripts/0_package.target-win10-x64.list | 4 ++--
+ project/BuildDependencies/scripts/0_package.target-win32.list | 4 ++--
+ project/BuildDependencies/scripts/0_package.target-x64.list   | 4 ++--
+ tools/depends/target/libudfread/UDFREAD-VERSION               | 2 +-
+ 6 files changed, 11 insertions(+), 11 deletions(-)
 
+diff --git a/project/BuildDependencies/scripts/0_package.target-win10-arm.list b/project/BuildDependencies/scripts/0_package.target-win10-arm.list
+index 77e974461fbf..ef0c736ae761 100644
+--- a/project/BuildDependencies/scripts/0_package.target-win10-arm.list
++++ b/project/BuildDependencies/scripts/0_package.target-win10-arm.list
+@@ -18,13 +18,13 @@ lcms2-2.9-win10-arm-v141-20200105.7z
+ libaacs-0.9.0-win10-arm-v141-20200203.7z
+ libass-0.14.0-win10-arm-v141-20200105.7z
+ libbdplus-0.1.2-win10-arm-v141-20200105.7z
+-libbluray-1.1.2-win10-arm-v141-20200105.7z
++libbluray-1.1.2-win10-arm-v142-20200706.7z
+ libcdio-2.1.0-win10-arm-v141-20200112.7z
+ libfribidi-1.0.8-win10-arm-v141-20200105.7z
+ libiconv-1.16-win10-arm-v141-20200105.7z
+ libmicrohttpd-0.9.69-win10-arm-v141-20200105.7z
+ libnfs-4.0.0-win10-arm-v142-20200605.7z
+-libudfread-1.0.0-win10-arm-v141-20200411.7z
++libudfread-1.1.0-win10-arm-v142-20200706.7z
+ libxml2-2.9.9-win10-arm-v141-20200105.7z
+ libxslt-1.1.34-win10-arm-v141-20200105.7z
+ lzo2-2.10-win10-arm-v141-20200105.7z
+diff --git a/project/BuildDependencies/scripts/0_package.target-win10-win32.list b/project/BuildDependencies/scripts/0_package.target-win10-win32.list
+index 60458e089060..96998a095add 100644
+--- a/project/BuildDependencies/scripts/0_package.target-win10-win32.list
++++ b/project/BuildDependencies/scripts/0_package.target-win10-win32.list
+@@ -18,13 +18,13 @@ lcms2-2.9-win10-win32-v141-20200105.7z
+ libaacs-0.9.0-win10-win32-v141-20200203.7z
+ libass-0.14.0-win10-win32-v141-20200105.7z
+ libbdplus-0.1.2-win10-win32-v141-20200105.7z
+-libbluray-1.1.2-win10-win32-v141-20200105.7z
++libbluray-1.1.2-win10-win32-v142-20200706.7z
+ libcdio-2.1.0-win10-win32-v141-20200112.7z
+ libfribidi-1.0.8-win10-win32-v141-20200105.7z
+ libiconv-1.16-win10-win32-v141-20200105.7z
+ libmicrohttpd-0.9.69-win10-win32-v141-20200105.7z
+ libnfs-4.0.0-win10-win32-v142-20200605.7z
+-libudfread-1.0.0-win10-win32-v141-20200411.7z
++libudfread-1.1.0-win10-win32-v142-20200706.7z
+ libxml2-2.9.9-win10-win32-v141-20200105.7z
+ libxslt-1.1.34-win10-win32-v141-20200105.7z
+ lzo2-2.10-win10-win32-v141-20200105.7z
+diff --git a/project/BuildDependencies/scripts/0_package.target-win10-x64.list b/project/BuildDependencies/scripts/0_package.target-win10-x64.list
+index 531baa11636d..90040af5e1b0 100644
+--- a/project/BuildDependencies/scripts/0_package.target-win10-x64.list
++++ b/project/BuildDependencies/scripts/0_package.target-win10-x64.list
+@@ -18,13 +18,13 @@ lcms2-2.9-win10-x64-v141-20200105.7z
+ libaacs-0.9.0-win10-x64-v141-20200203.7z
+ libass-0.14.0-win10-x64-v141-20200105.7z
+ libbdplus-0.1.2-win10-x64-v141-20200105.7z
+-libbluray-1.1.2-win10-x64-v141-20200105.7z
++libbluray-1.1.2-win10-x64-v142-20200706.7z
+ libcdio-2.1.0-win10-x64-v141-20200112.7z
+ libfribidi-1.0.8-win10-x64-v141-20200105.7z
+ libiconv-1.16-win10-x64-v141-20200105.7z
+ libmicrohttpd-0.9.69-win10-x64-v141-20200105.7z
+ libnfs-4.0.0-win10-x64-v142-20200605.7z
+-libudfread-1.0.0-win10-x64-v141-20200411.7z
++libudfread-1.1.0-win10-x64-v142-20200706.7z
+ libxml2-2.9.9-win10-x64-v141-20200105.7z
+ libxslt-1.1.34-win10-x64-v141-20200105.7z
+ lzo2-2.10-win10-x64-v141-20200105.7z
+diff --git a/project/BuildDependencies/scripts/0_package.target-win32.list b/project/BuildDependencies/scripts/0_package.target-win32.list
+index 55e4cd455f0a..541a4acfcdca 100644
+--- a/project/BuildDependencies/scripts/0_package.target-win32.list
++++ b/project/BuildDependencies/scripts/0_package.target-win32.list
+@@ -21,7 +21,7 @@ lcms2-2.9-win32-v141-20200105.7z
+ libaacs-0.9.0-win32-v141-20200203.7z
+ libass-0.14.0-win32-v141-20200105.7z
+ libbdplus-0.1.2-win32-v141-20200105.7z
+-libbluray-1.1.2-win32-v141-20200105.7z
++libbluray-1.1.2-win32-v142-20200706.7z
+ libcdio-2.1.0-win32-v141-20200112.7z
+ libcec-4.0.4-win32-v141-20200105.7z
+ libfribidi-1.0.8-win32-v141-20200105.7z
+@@ -31,7 +31,7 @@ libmicrohttpd-0.9.69-win32-v141-20200105.7z
+ libnfs-4.0.0-win32-v142-20200605.7z
+ libplist-2.1.0-win32-v141-20200105.7z
+ libpng-1.6.37-win32-v141-20200105.7z
+-libudfread-1.0.0-win32-v141-20200411.7z
++libudfread-1.1.0-win32-v142-20200706.7z
+ libxml2-2.9.9-win32-v141-20200105.7z
+ libxslt-1.1.34-win32-v141-20200105.7z
+ lzo2-2.10-win32-v141-20200105.7z
+diff --git a/project/BuildDependencies/scripts/0_package.target-x64.list b/project/BuildDependencies/scripts/0_package.target-x64.list
+index 8f0e2c0bc7e4..65a7a52b575e 100644
+--- a/project/BuildDependencies/scripts/0_package.target-x64.list
++++ b/project/BuildDependencies/scripts/0_package.target-x64.list
+@@ -20,7 +20,7 @@ lcms2-2.9-x64-v141-20200105.7z
+ libaacs-0.9.0-x64-v141-20200203.7z
+ libass-0.14.0-x64-v141-20200105.7z
+ libbdplus-0.1.2-x64-v141-20200105.7z
+-libbluray-1.1.2-x64-v141-20200105.7z
++libbluray-1.1.2-x64-v142-20200706.7z
+ libcdio-2.1.0-x64-v141-20200112.7z
+ libcec-4.0.4-x64-v141-20200105.7z
+ libfribidi-1.0.8-x64-v141-20200105.7z
+@@ -28,7 +28,7 @@ libiconv-1.16-x64-v141-20200105.7z
+ libmicrohttpd-0.9.69-x64-v141-20200105.7z
+ libnfs-4.0.0-x64-v142-20200605.7z
+ libplist-2.1.0-x64-v141-20200105.7z
+-libudfread-1.0.0-x64-v141-20200411.7z
++libudfread-1.1.0-x64-v142-20200706.7z
+ libxml2-2.9.9-x64-v141-20200105.7z
+ libxslt-1.1.34-x64-v141-20200105.7z
+ lzo2-2.10-x64-v141-20200105.7z
 diff --git a/tools/depends/target/libudfread/UDFREAD-VERSION b/tools/depends/target/libudfread/UDFREAD-VERSION
 index 9a13b55e1e68..f0cb3bab5e71 100644
 --- a/tools/depends/target/libudfread/UDFREAD-VERSION

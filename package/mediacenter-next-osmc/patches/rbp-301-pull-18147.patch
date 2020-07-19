@@ -1,0 +1,96 @@
+From f00031c821d8b8c3f2ae6d54d7156b25798a902c Mon Sep 17 00:00:00 2001
+From: jjd-uk <>
+Date: Tue, 7 Jul 2020 13:29:34 +0100
+Subject: [PATCH] [Estuary] Fixup Topbar consistency
+
+---
+ .../xml/Custom_1109_TopBarOverlay.xml         | 39 +++++++++----------
+ addons/skin.estuary/xml/Variables.xml         |  3 +-
+ 2 files changed, 20 insertions(+), 22 deletions(-)
+
+diff --git a/addons/skin.estuary/xml/Custom_1109_TopBarOverlay.xml b/addons/skin.estuary/xml/Custom_1109_TopBarOverlay.xml
+index a21bafefbab9..7e3ecc03957a 100644
+--- a/addons/skin.estuary/xml/Custom_1109_TopBarOverlay.xml
++++ b/addons/skin.estuary/xml/Custom_1109_TopBarOverlay.xml
+@@ -18,24 +18,27 @@
+ 			</control>
+ 			<control type="group">
+ 				<animation effect="slide" end="90,0" time="0" condition="Skin.HasSetting(touchmode)">conditional</animation>
+-				<control type="image">
+-					<left>15</left>
++				<control type="grouplist">
++					<visible>!String.IsEmpty(Player.Art(tvshow.clearlogo)) | !String.IsEmpty(Player.Art(clearlogo))</visible>
+ 					<top>10</top>
+-					<width>300</width>
+-					<height>140</height>
+-					<texture>$VAR[PlayerClearLogoVar]</texture>
+-					<aspectratio aligny="center" align="center">keep</aspectratio>
+-				</control>
+-				<control type="textbox">
+-					<label>$VAR[NowPlayingBreadcrumbsVar]</label>
+-					<font>font45</font>
+-					<shadowcolor>text_shadow</shadowcolor>
+-					<top>0</top>
+-					<height>150</height>
+-					<left>330</left>
++					<left>20</left>
+ 					<right>400</right>
+-					<aligny>center</aligny>
+-					<visible>!String.IsEmpty(Player.Art(tvshow.clearlogo))</visible>
++					<height>100</height>
++					<itemgap>10</itemgap>
++					<orientation>horizontal</orientation>
++					<control type="image">
++						<width>300</width>
++						<texture>$VAR[PlayerClearLogoVar]</texture>
++						<aspectratio aligny="center" align="center">keep</aspectratio>
++					</control>
++					<control type="label">
++						<align>left</align>
++						<aligny>center</aligny>
++						<font>font13</font>
++						<label>$VAR[OSDSubLabelVar]</label>
++						<shadowcolor>text_shadow</shadowcolor>
++						<scroll>true</scroll>
++					</control>
+ 				</control>
+ 				<control type="group">
+ 					<visible>!Window.IsActive(pvrosdchannels) + !Window.IsActive(pvrchannelguide)</visible>
+@@ -50,16 +53,12 @@
+ 						<shadowcolor>text_shadow</shadowcolor>
+ 						<top>7</top>
+ 						<height>50</height>
+-						<left>0</left>
+-						<right>0</right>
+ 					</control>
+ 					<control type="label">
+ 						<top>60</top>
+ 						<label>$VAR[OSDSubLabelVar]</label>
+ 						<shadowcolor>text_shadow</shadowcolor>
+ 						<height>60</height>
+-						<left>0</left>
+-						<right>0</right>
+ 					</control>
+ 				</control>
+ 			</control>
+diff --git a/addons/skin.estuary/xml/Variables.xml b/addons/skin.estuary/xml/Variables.xml
+index 2d6e717c9c86..47ceb87b2b0c 100644
+--- a/addons/skin.estuary/xml/Variables.xml
++++ b/addons/skin.estuary/xml/Variables.xml
+@@ -307,7 +307,6 @@
+ 	<variable name="NowPlayingBreadcrumbsVar">
+   		<value condition="MusicPlayer.Content(livetv) + Player.HasAudio">$INFO[MusicPlayer.Title]</value> 
+ 		<value condition="VideoPlayer.Content(livetv)">$INFO[VideoPlayer.Title]</value>
+-		<value condition="VideoPlayer.Content(episodes) + !String.IsEmpty(Player.Art(tvshow.clearlogo))">$INFO[VideoPlayer.Season,[COLOR button_focus]S,[/COLOR]]$INFO[VideoPlayer.Episode,[COLOR button_focus]E,: [/COLOR]]$INFO[VideoPlayer.Title]</value>
+ 		<value condition="VideoPlayer.Content(episodes) + Window.IsActive(fullscreenvideo)">$INFO[VideoPlayer.TVShowTitle]$INFO[VideoPlayer.Year, (,)]</value>
+ 		<value condition="!VideoPlayer.Content(episodes) + Window.IsActive(fullscreenvideo)">$INFO[VideoPlayer.Title]$INFO[VideoPlayer.Year, (,)]</value>
+ 		<value condition="MusicPartyMode.Enabled">$LOCALIZE[589]</value>
+@@ -316,7 +315,7 @@
+ 	<variable name="OSDSubLabelVar">
+ 		<value condition="Window.IsActive(visualisation) + Integer.IsGreater(Playlist.Length(music),1) + Integer.IsGreater(Playlist.Position(music),0)">$LOCALIZE[554] $INFO[Playlist.Position] / $INFO[Playlist.Length]</value>
+ 		<value condition="VideoPlayer.Content(musicvideos)">$INFO[VideoPlayer.Artist]$INFO[VideoPlayer.Album, - ]</value>
+-		<value condition="VideoPlayer.Content(episodes) + !player.chaptercount">$INFO[VideoPlayer.Season,S]$INFO[VideoPlayer.Episode,E,: ]$INFO[VideoPlayer.Title]</value>
++		<value condition="VideoPlayer.Content(episodes) + !player.chaptercount">$INFO[VideoPlayer.Season,[COLOR button_focus][CAPITALIZE]$LOCALIZE[36906][/CAPITALIZE]:[/COLOR] S]$INFO[VideoPlayer.Episode,E,: ]$INFO[VideoPlayer.Title]</value>
+ 		<value condition="VideoPlayer.Content(episodes) + player.chaptercount">$INFO[VideoPlayer.Season,[COLOR button_focus][CAPITALIZE]$LOCALIZE[36906][/CAPITALIZE]:[/COLOR] S]$INFO[VideoPlayer.Episode,E, - ]$INFO[VideoPlayer.Title,,[CR]]$INFO[player.chapter,[COLOR button_focus]$LOCALIZE[21396]:[/COLOR] ]$INFO[Player.ChapterCount,/]$INFO[Player.ChapterName, - ]</value>
+ 		<value condition="VideoPlayer.Content(LiveTV) | PVR.IsPlayingRecording | PVR.IsPlayingEpgTag">$INFO[VideoPlayer.ChannelNumberLabel,([COLOR button_focus],[/COLOR]) ]$INFO[VideoPlayer.ChannelName] $INFO[VideoPlayer.EpisodeName, - ]</value>
+ 		<value condition="player.chaptercount + [!VideoPlayer.Content(episodes) + !VideoPlayer.Content(LiveTV)]">$INFO[player.chapter,[COLOR button_focus]$LOCALIZE[21396]:[/COLOR] ]$INFO[Player.ChapterCount,/]$INFO[Player.ChapterName, - ]</value>

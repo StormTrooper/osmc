@@ -1,0 +1,22 @@
+From 1a780d5a74d7f9919c9f8ad7e42eda9f0d83cb88 Mon Sep 17 00:00:00 2001
+From: kiwiploetze <dogtag99@gmail.com>
+Date: Tue, 23 Jun 2020 19:44:42 +0200
+Subject: [PATCH] [Windows] fix for dual monitor problem
+
+---
+ xbmc/windowing/windows/WinSystemWin32.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xbmc/windowing/windows/WinSystemWin32.cpp b/xbmc/windowing/windows/WinSystemWin32.cpp
+index ed01be8afb6c..dd1dc7f424d3 100644
+--- a/xbmc/windowing/windows/WinSystemWin32.cpp
++++ b/xbmc/windowing/windows/WinSystemWin32.cpp
+@@ -363,7 +363,7 @@ void CWinSystemWin32::AdjustWindow(bool forceResize)
+ 
+     if (!m_ValidWindowedPosition || hMon == nullptr || hMon != hMon2)
+     {
+-      RECT newScreenRect = ScreenRect(m_hMonitor);
++      RECT newScreenRect = ScreenRect(hMon2);
+       rc.left = m_nLeft = newScreenRect.left + ((newScreenRect.right - newScreenRect.left) / 2) - (m_nWidth / 2);
+       rc.top = m_nTop = newScreenRect.top + ((newScreenRect.bottom - newScreenRect.top) / 2) - (m_nHeight / 2);
+       rc.right = m_nLeft + m_nWidth;
