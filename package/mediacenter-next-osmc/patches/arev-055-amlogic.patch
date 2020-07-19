@@ -115,21 +115,21 @@ index 35706f9f07..624398b9b4 100644
 
  #: system/settings/settings.xml
  msgctxt "#13460"
-@@ -20014,7 +20017,13 @@ msgctxt "#36421"
- msgid "Bypassing VDPAU mixer saves resources on low power systems but slightly reduces picture quality."
+@@ -20014,7 +20017,13 @@ msgctxt "#36438"
+ msgid "Any repositories"
  msgstr ""
 
--#empty strings from id 36422 to 36423
+-#empty strings from id 36439 to 36441
 +#. Description of setting with label #13438 "Allow hardware acceleration (amcodec)"
 +#: system/settings/settings.xml
-+msgctxt "#36422"
++msgctxt "#36439"
 +msgid "Enable hardware video decode using Amlogic decoder."
 +msgstr ""
 +
-+#empty string with id 36423
++#empty strings from id 36439 to 36441
 
+ #. Description of setting "System -> Audio output -> Volume control steps" with label #1302
  #: system/settings/settings.xml
- msgctxt "#36424"
 @@ -21823,7 +21832,27 @@ msgctxt "#38354"
  msgid "Unable to read xml file"
  msgstr ""
