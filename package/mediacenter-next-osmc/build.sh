@@ -11,9 +11,8 @@
 #else
 pull_source "https://github.com/xbmc/xbmc/archive/db74480506b32d0e8df429882d5bab8b9172db69.tar.gz" "$(pwd)/src"
 API_VERSION="19"
+#fi
 
-
-fi
 if [ $? != 0 ]; then echo -e "Error fetching Kodi source" && exit 1; fi
 # Build in native environment
 BUILD_OPTS=$BUILD_OPTION_DEFAULTS
