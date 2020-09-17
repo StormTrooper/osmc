@@ -231,7 +231,7 @@ then
             -DENABLE_OPTICAL=1 \
             -DENABLE_DVDCSS=1 \
             -DCORE_SYSTEM_NAME=linux \
-            -DCORE_PLATFORM_NAME=rbpi \
+            -DCORE_PLATFORM_NAME=gbm \
             -DWITH_ARCH=arm \
             -DENABLE_APP_AUTONAME=OFF \
             -DENABLE_INTERNAL_FMT=ON \
