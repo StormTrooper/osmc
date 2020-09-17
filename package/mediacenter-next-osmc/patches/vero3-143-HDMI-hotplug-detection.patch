@@ -27,7 +27,7 @@ index ec6c9bf5ae..5c723e397b
 +      CServiceBroker::GetWinSystem()->UpdateResolutions();
 +      CDisplaySettings::GetInstance().SetCurrentResolution(RES_DESKTOP);
 +      CServiceBroker::GetWinSystem()->GetGfxContext().SetVideoResolution(RES_DESKTOP, true);
-+      CLog::Log(LOGNOTICE, "Updated resolutions and set desktop");
++      CLog::Log(LOGINFO, "Updated resolutions and set desktop");
 +    }
 +  }
 +

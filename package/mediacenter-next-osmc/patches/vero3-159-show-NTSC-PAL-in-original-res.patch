@@ -186,8 +186,8 @@ index d6f8ec1753..efd603803b 100644
 +  else if (curDesktopSetting.length() == 24)
 +    curDesktopSetting = StringUtils::Right(curDesktopSetting, 23);
  
-   CLog::Log(LOGNOTICE, "Current display setting is %s", curDesktopSetting.c_str());
-   CLog::Log(LOGNOTICE, "Current output resolution is %s", curResolution.c_str());
+   CLog::Log(LOGINFO, "Current display setting is %s", curDesktopSetting.c_str());
+   CLog::Log(LOGINFO, "Current output resolution is %s", curResolution.c_str());
 -- 
 2.17.1
 

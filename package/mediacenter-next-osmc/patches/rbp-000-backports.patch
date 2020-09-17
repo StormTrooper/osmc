@@ -806,7 +806,7 @@ index 83a87847e811..af978d3d1104 100644
 +  // Have we reached EOF?
 +  if (iSectorCount == 0)
 +  {
-+    CLog::Log(LOGNOTICE, "file cdda: Read EoF");
++    CLog::Log(LOGINFO, "file cdda: Read EoF");
 +    return 0; // Success, but nothing read
 +  } // Reached EoF
 +

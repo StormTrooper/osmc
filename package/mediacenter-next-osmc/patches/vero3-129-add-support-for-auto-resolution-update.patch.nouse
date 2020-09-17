@@ -26,7 +26,7 @@ index a7f1ba2..4633eab 100644
 +      g_Windowing.UpdateResolutions();
 +      CDisplaySettings::GetInstance().SetCurrentResolution(RES_DESKTOP);
 +      g_graphicsContext.SetVideoResolution(RES_DESKTOP, true);
-+      CLog::Log(LOGNOTICE, "Updated resolutions and set desktop");
++      CLog::Log(LOGINFO, "Updated resolutions and set desktop");
 +    }
 +  }
 +

@@ -56,7 +56,7 @@ index 6389f2403c..9f15f2bbb6 100644
 +
    while (!m_at_jni)
    {
-     CLog::Log(LOGNOTICE, "Trying to open: samplerate: %u, channelMask: %d, encoding: %d", m_sink_sampleRate, atChannelMask, m_encoding);
+     CLog::Log(LOGINFO, "Trying to open: samplerate: %u, channelMask: %d, encoding: %d", m_sink_sampleRate, atChannelMask, m_encoding);
 @@ -478,8 +502,26 @@ bool CAESinkAUDIOTRACK::Initialize(AEAudioFormat &format, std::string &device)
      }
      else
@@ -137,7 +137,7 @@ index 6389f2403c..9f15f2bbb6 100644
            CLog::Log(LOGDEBUG, "Firmware implements TrueHD RAW");
            m_info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_TRUEHD);
 @@ -1061,15 +1119,21 @@ void CAESinkAUDIOTRACK::UpdateAvailablePCMCapabilities()
-     CLog::Log(LOGNOTICE, "Float is supported");
+     CLog::Log(LOGINFO, "Float is supported");
    }
  
 -  int test_sample[] = { 32000, 44100, 48000, 88200, 96000, 176400, 192000 };

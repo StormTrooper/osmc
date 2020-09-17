@@ -88,10 +88,10 @@ index 3ad01c1..c58777c 100644
 +	strStandbyScript = CSpecialProtocol::TranslatePath("special://profile/wake.py");
 +  else
 +	strStandbyScript = CSpecialProtocol::TranslatePath("special://profile/standby.py");
-+  CLog::Log(LOGNOTICE, "CApplication::ToggleStandby -- checking for existence of %s", strStandbyScript.c_str());
++  CLog::Log(LOGINFO, "CApplication::ToggleStandby -- checking for existence of %s", strStandbyScript.c_str());
 +
 +  if (XFILE::CFile::Exists(strStandbyScript)) {
-+    CLog::Log(LOGNOTICE, "CApplication::ToggleStandby -- script %s found", strStandbyScript.c_str());
++    CLog::Log(LOGINFO, "CApplication::ToggleStandby -- script %s found", strStandbyScript.c_str());
 +    CScriptInvocationManager::GetInstance().ExecuteAsync(strStandbyScript);
 +  }
 +
@@ -227,7 +227,7 @@ index 9c13b85..d6fdb24 100644
  bool CPowerManager::Suspend()
  {
 -  return (CanSuspend() && m_instance->Suspend());
-+  CLog::Log(LOGNOTICE, "Activating standby mode");
++  CLog::Log(LOGINFO, "Activating standby mode");
 +  g_application.ActivateScreenSaverStandby();
 +  return true;
  }

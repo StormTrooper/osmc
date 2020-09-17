@@ -21,7 +21,7 @@ index 9b9b0ea..e75883f 100644
 -      CDisplaySettings::GetInstance().SetCurrentResolution(RES_DESKTOP);
 +      CDisplaySettings::GetInstance().SetCurrentResolution(RES_DESKTOP, true);
        CServiceBroker::GetWinSystem()->GetGfxContext().SetVideoResolution(RES_DESKTOP, true);
-       CLog::Log(LOGNOTICE, "Updated resolutions and set desktop");
+       CLog::Log(LOGINFO, "Updated resolutions and set desktop");
      }
 diff --git a/xbmc/settings/DisplaySettings.cpp b/xbmc/settings/DisplaySettings.cpp
 index 9f94a19..e24ce2d 100755
@@ -102,8 +102,8 @@ index 99fc708..d6f8ec1 100755
 +  if (curDesktopSetting == "DESKTOP")
 +    curDesktopSetting = curResolution;
 +
-+  CLog::Log(LOGNOTICE, "Current display setting is %s", curDesktopSetting.c_str());
-+  CLog::Log(LOGNOTICE, "Current output resolution is %s", curResolution.c_str());
++  CLog::Log(LOGINFO, "Current display setting is %s", curDesktopSetting.c_str());
++  CLog::Log(LOGINFO, "Current output resolution is %s", curResolution.c_str());
 +
    RESOLUTION ResDesktop = RES_INVALID;
    RESOLUTION res_index  = RES_DESKTOP;
@@ -130,7 +130,7 @@ index 99fc708..d6f8ec1 100755
 +      ResDesktop = res_index;
 +      resExactMatch = true;
 +      newRes = ResString;
-+      CLog::Log(LOGNOTICE, "Current resolution setting found at 16 + %d", i);
++      CLog::Log(LOGINFO, "Current resolution setting found at 16 + %d", i);
 +    }
 +
 +    /* fall back to the highest resolution available but not more than current desktop */
@@ -140,7 +140,7 @@ index 99fc708..d6f8ec1 100755
        ResDesktop = res_index;
 +      ResFallback = ResString.substr(5,18);
 +      newRes = ResString;
-+      CLog::Log(LOGNOTICE, "Fallback resolution at 16 + %d %s", i, ResFallback.c_str());
++      CLog::Log(LOGINFO, "Fallback resolution at 16 + %d %s", i, ResFallback.c_str());
      }
  
      res_index = (RESOLUTION)((int)res_index + 1);
@@ -148,11 +148,11 @@ index 99fc708..d6f8ec1 100755
    // set RES_DESKTOP
    if (ResDesktop != RES_INVALID)
    {
--    CLog::Log(LOGNOTICE, "Found (%dx%d%s@%f) at %d, setting to RES_DESKTOP at %d",
+-    CLog::Log(LOGINFO, "Found (%dx%d%s@%f) at %d, setting to RES_DESKTOP at %d",
 -      resDesktop.iWidth, resDesktop.iHeight,
 -      resDesktop.dwFlags & D3DPRESENTFLAG_INTERLACED ? "i" : "",
 -      resDesktop.fRefreshRate,
-+    CLog::Log(LOGNOTICE, "Found best resolution %s at %d, setting to RES_DESKTOP at %d", newRes,
++    CLog::Log(LOGINFO, "Found best resolution %s at %d, setting to RES_DESKTOP at %d", newRes,
        (int)ResDesktop, (int)RES_DESKTOP);
  
      CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP) = CDisplaySettings::GetInstance().GetResolutionInfo(ResDesktop);

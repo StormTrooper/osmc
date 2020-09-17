@@ -2557,7 +2557,7 @@ index 0000000000..10e73cc74f
 +      m_ptsIs64us = true;
 +  }
 +
-+  CLog::Log(LOGNOTICE, "CAMLCodec::OpenDecoder - using V4L2 pts format: %s", m_ptsIs64us ? "64Bit":"32Bit");
++  CLog::Log(LOGINFO, "CAMLCodec::OpenDecoder - using V4L2 pts format: %s", m_ptsIs64us ? "64Bit":"32Bit");
 +
 +  m_ptsOverflow = 0;
 +
@@ -4339,7 +4339,7 @@ index 0000000000..429e1bcf5f
 +    else
 +      has_aml = 0;
 +    if (has_aml)
-+      CLog::Log(LOGNOTICE, "AML device detected");
++      CLog::Log(LOGINFO, "AML device detected");
 +  }
 +  return has_aml == 1;
 +}
@@ -5633,7 +5633,7 @@ index 0000000000..0637f83fc0
 +    CServiceBroker::GetWinSystem()->GetGfxContext().ResetOverscan(resolutions[i]);
 +    CDisplaySettings::GetInstance().GetResolutionInfo(res_index) = resolutions[i];
 +
-+    CLog::Log(LOGNOTICE, "Found resolution %d x %d with %d x %d%s @ %f Hz\n",
++    CLog::Log(LOGINFO, "Found resolution %d x %d with %d x %d%s @ %f Hz\n",
 +      resolutions[i].iWidth,
 +      resolutions[i].iHeight,
 +      resolutions[i].iScreenWidth,
@@ -5657,7 +5657,7 @@ index 0000000000..0637f83fc0
 +  // set RES_DESKTOP
 +  if (ResDesktop != RES_INVALID)
 +  {
-+    CLog::Log(LOGNOTICE, "Found (%dx%d%s@%f) at %d, setting to RES_DESKTOP at %d",
++    CLog::Log(LOGINFO, "Found (%dx%d%s@%f) at %d, setting to RES_DESKTOP at %d",
 +      resDesktop.iWidth, resDesktop.iHeight,
 +      resDesktop.dwFlags & D3DPRESENTFLAG_INTERLACED ? "i" : "",
 +      resDesktop.fRefreshRate,

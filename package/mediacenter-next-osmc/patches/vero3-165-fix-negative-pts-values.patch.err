@@ -49,7 +49,7 @@ index 2627160623f9..8971653fe60b 100644
 -      m_ptsIs64us = true;
 -  }
 -
--  CLog::Log(LOGNOTICE, "CAMLCodec::OpenDecoder - using V4L2 pts format: %s", m_ptsIs64us ? "64Bit":"32Bit");
+-  CLog::Log(LOGINFO, "CAMLCodec::OpenDecoder - using V4L2 pts format: %s", m_ptsIs64us ? "64Bit":"32Bit");
 -
    m_ptsOverflow = 0;
  
