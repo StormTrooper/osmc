@@ -1462,10 +1462,10 @@ diff --git a/addons/resource.language.en_gb/resources/strings.po b/addons/resour
 index 894d04875b96..5d6a1a9d7cac 100644
 --- a/addons/resource.language.en_gb/resources/strings.po
 +++ b/addons/resource.language.en_gb/resources/strings.po
-@@ -22146,3 +22146,34 @@ msgctxt "#39119"
- msgid "Last modified"
+@@ -22146,3 +22146,34 @@ msgctxt "#39120"
+ msgctxt "#39120"
+ msgid "Skip filename matching for external audio tracks"
  msgstr ""
- 
 +#. Description of setting "System -> Audio Ouput -> A/V sync method" with label #38200
 +#: system/settings/settings.xml
 +msgctxt "#38200"
