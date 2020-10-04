@@ -4,6 +4,8 @@ all:
 rbp2:
 	sudo bash build.sh "rbp2"
 
+rbp4:
+	sudo back build.sh "rbp4"
 
 vero2:
 	sudo bash build.sh "vero2"
