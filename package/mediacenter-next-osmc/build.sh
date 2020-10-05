@@ -115,6 +115,8 @@ then
 		handle_dep "armv7-libplatform-dev-osmc"
 		handle_dep "armv7-libbluray-dev-osmc"
 		handle_dep "armv7-libsqlite-dev-osmc"
+		handle_dep "libdrm-dev"
+		handle_dep "rbp2-mesa-dev-osmc"
 	fi
         if [ "$1" == "vero2" ]
         then
@@ -237,7 +239,8 @@ then
             -DENABLE_DVDCSS=1 \
             -DCORE_SYSTEM_NAME=linux \
             -DCORE_PLATFORM_NAME=gbm \
-            -DWITH_ARCH=arm \
+            -DGBM_RENDER_SYSTEM=gles \
+	    -DWITH_ARCH=arm \
             -DENABLE_APP_AUTONAME=OFF \
             -DENABLE_INTERNAL_FMT=ON \
             -DENABLE_INTERNAL_SPDLOG=ON \
