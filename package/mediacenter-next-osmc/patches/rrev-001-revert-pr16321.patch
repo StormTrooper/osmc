@@ -1536,22 +1536,6 @@ index e358775911..ac27049cdb 100644
    list(APPEND ffmpeg_conf --enable-pic --disable-armv5te --disable-armv6t2)
  elseif(CPU MATCHES mips)
    list(APPEND ffmpeg_conf --disable-mips32r2 --disable-mipsdsp --disable-mipsdspr2)
-diff --git a/tools/depends/xbmc-addons.include b/tools/depends/xbmc-addons.include
-index 79d7c069b4..35399f0e2f 100644
---- a/tools/depends/xbmc-addons.include
-+++ b/tools/depends/xbmc-addons.include
-@@ -6,6 +6,11 @@ export PKG_CONFIG_LIBDIR = $(ADDON_DEPS_DIR)/lib/pkgconfig
- ifeq ($(CROSS_COMPILING),yes)
-   DEPS = $(TOOLCHAIN_FILE) $(abs_top_srcdir)/target/config-binaddons.site $(abs_top_srcdir)/target/Toolchain_binaddons.cmake $(CONFIG_SUB) $(CONFIG_GUESS)
-   TOOLCHAIN = -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN_FILE)
-+  ifeq ($(OS),linux)
-+    ifneq ($(TARGET_PLATFORM),raspberry-pi)
-+      DEPS += linux-system-libs
-+    endif
-+  endif
- endif
- 
- ifeq ($(PLATFORM),)
 diff --git a/xbmc/Application.cpp b/xbmc/Application.cpp
 index 0a1d9b6729..3ac1680b32 100644
 --- a/xbmc/Application.cpp
