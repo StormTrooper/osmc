@@ -249,7 +249,9 @@ then
             -DENABLE_LCMS2=OFF \
             -DENABLE_SNDIO=OFF \
             -DENABLE_MARIADBCLIENT=ON \
-        .
+            -DENABLE_VAAPI=OFF \
+            -DENABLE_VDPAU=OFF \
+    	    .
 	fi
        	# Raspberry Pi 4 config, can be consolidated above when all on same target.
 	if [ "$1" == "rbp4" ]; then
