@@ -8,7 +8,6 @@ This reverts commit 750b8c4b2408938ff0d0b26e732de4e6c8c692b0.
  .../resource.language.en_gb/resources/strings.po   |   35 +-
  cmake/modules/FindAML.cmake                        |   49 +
  cmake/platform/linux/aml.cmake                     |    3 +
- cmake/scripts/android/ArchSetup.cmake              |    1 +
  cmake/treedata/common/aml/aml.txt                  |    2 +
  system/settings/aml-linux.xml                      |   20 +
  system/settings/settings.xml                       |   75 +
@@ -223,18 +222,6 @@ index 0000000000..a1512269a2
 +set(PLATFORM_REQUIRED_DEPS OpenGLES AML EGL LibInput Xkbcommon)
 +set(APP_RENDER_SYSTEM gles)
 +list(APPEND PLATFORM_DEFINES -DMESA_EGL_NO_X11_HEADERS)
-diff --git a/cmake/scripts/android/ArchSetup.cmake b/cmake/scripts/android/ArchSetup.cmake
-index f092409ce9..3515a1c923 100644
---- a/cmake/scripts/android/ArchSetup.cmake
-+++ b/cmake/scripts/android/ArchSetup.cmake
-@@ -36,6 +36,7 @@ endif()
- list(APPEND SYSTEM_DEFINES -DHAS_ZEROCONF -DHAS_LINUX_NETWORK)
- 
- set(ENABLE_X11 OFF CACHE BOOL "" FORCE)
-+set(ENABLE_AML OFF CACHE BOOL "" FORCE)
- set(ENABLE_OPTICAL OFF CACHE BOOL "" FORCE)
- set(ENABLE_MDNS OFF CACHE BOOL "" FORCE)
- 
 diff --git a/cmake/treedata/common/aml/aml.txt b/cmake/treedata/common/aml/aml.txt
 new file mode 100644
 index 0000000000..1e4856fcd4
