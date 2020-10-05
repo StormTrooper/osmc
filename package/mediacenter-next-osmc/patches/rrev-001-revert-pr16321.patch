@@ -449,7 +449,7 @@ index b00fe08a25..0b73eb80bc 100644
  #
  #   EGL::EGL   - The EGL library
  
-+if(CORE_PLATFORM_NAME_LC STREQUAL rbpi)
++if(CORE_PLATFORM_NAME_LC STREQUAL gbm)
 +    set(_brcmprefix brcm)
 +endif()
 +
