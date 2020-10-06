@@ -7,9 +7,6 @@ rbp2:
 rbp4:
 	sudo bash build.sh "rbp4"
 
-vero2:
-	sudo bash build.sh "vero2"
-
 vero3:
 	sudo bash build.sh "vero3"
 
