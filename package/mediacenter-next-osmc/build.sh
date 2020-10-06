@@ -238,7 +238,8 @@ then
             -DENABLE_APP_AUTONAME=OFF \
             -DENABLE_INTERNAL_FMT=ON \
             -DENABLE_INTERNAL_FLATBUFFERS=ON \
-            -DENABLE_MDNS=OFF \
+            -DENABLE_INTERNAL_SPDLOG=ON \
+	    -DENABLE_MDNS=OFF \
             -DENABLE_BLUETOOTH=OFF \
             -DENABLE_PULSEAUDIO=OFF \
             -DENABLE_LCMS2=OFF \
