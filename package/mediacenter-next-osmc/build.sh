@@ -261,6 +261,8 @@ then
             -DCMAKE_LIBRARY_PATH=/usr/osmc/lib \
             -DASS_INCLUDE_DIR=/usr/osmc/lib \
             -DSHAIRPLAY_INCLUDE_DIR=/usr/osmc/include/shairplay/ \
+            -DEGL_LIBRARY=/usr/osmc/incude/EGL \
+            -DOPENGLES_gl_LIBRARY=/usr/osmc/lib \
             -DENABLE_OPENGLES=ON \
             -DENABLE_OPENGL=OFF \
             -DENABLE_OPTICAL=1 \
