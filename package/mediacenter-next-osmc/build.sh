@@ -217,18 +217,15 @@ then
 	fi
 	if [ "$1" == "rbp2" ]; then
 	LIBRARY_PATH+=/opt/vc/lib && \
-	COMPFLAGS+="-I/opt/vc/include -I/opt/vc/include/interface -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux -Wl,-rpath=/usr/osmc/lib -L/usr/osmc/lib " && \
-	export CFLAGS+=${COMPFLAGS} && \
-	export CXXFLAGS+=${COMPFLAGS} && \
-	export CPPFLAGS+=${COMPFLAGS} && \
-	export LDFLAGS="-L/opt/vc/lib" && \
-        cmake -DCMAKE_INSTALL_PREFIX=/usr \
+        COMPFLAGS+="-I/usr/osmc/include/ -I/usr/osmc/include/EGL -Wl,-rpath=/usr/osmc/lib -L/usr/osmc/lib" && \
+        export CFLAGS+=${COMPFLAGS} && \
+        export CXXFLAGS+=${COMPFLAGS} && \
+        export CPPFLAGS+=${COMPFLAGS} && \
+    cmake -DCMAKE_INSTALL_PREFIX=/usr \
             -DCMAKE_INSTALL_LIBDIR=/usr/lib \
-            -DCMAKE_PREFIX_PATH=/opt/vc \
             -DCMAKE_INCLUDE_PATH=/usr/osmc/include \
             -DCMAKE_LIBRARY_PATH=/usr/osmc/lib \
             -DASS_INCLUDE_DIR=/usr/osmc/lib \
-            -DGTEST_LIBRARY=/usr/osmc/lib \
             -DSHAIRPLAY_INCLUDE_DIR=/usr/osmc/include/shairplay/ \
             -DENABLE_OPENGLES=ON \
             -DENABLE_OPENGL=OFF \
@@ -237,13 +234,11 @@ then
             -DCORE_SYSTEM_NAME=linux \
             -DCORE_PLATFORM_NAME=gbm \
             -DGBM_RENDER_SYSTEM=gles \
-	    -DWITH_ARCH=arm \
+            -DWITH_ARCH=arm \
             -DENABLE_APP_AUTONAME=OFF \
             -DENABLE_INTERNAL_FMT=ON \
-            -DENABLE_INTERNAL_SPDLOG=ON \
             -DENABLE_INTERNAL_FLATBUFFERS=ON \
-            -DENABLE_INTERNAL_UDFREAD=ON \
-	    -DENABLE_MDNS=OFF \
+            -DENABLE_MDNS=OFF \
             -DENABLE_BLUETOOTH=OFF \
             -DENABLE_PULSEAUDIO=OFF \
             -DENABLE_LCMS2=OFF \
@@ -251,7 +246,7 @@ then
             -DENABLE_MARIADBCLIENT=ON \
             -DENABLE_VAAPI=OFF \
             -DENABLE_VDPAU=OFF \
-    	    .
+        .
 	fi
        	# Raspberry Pi 4 config, can be consolidated above when all on same target.
 	if [ "$1" == "rbp4" ]; then
