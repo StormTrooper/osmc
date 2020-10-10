@@ -4,7 +4,7 @@ index faf423c..cf123fe 100644
 +++ b/addons/resource.language.en_gb/resources/strings.po
 @@ -16602,6 +16602,21 @@ msgstr ""
  
- #empty strings from id 37046 to 38009
+ #empty strings from id 37047 to 38010
  
 +#: system/settings/settings.xml
 +msgctxt "#38007"
@@ -21,9 +21,9 @@ index faf423c..cf123fe 100644
 +msgid "%i dB"
 +msgstr ""
 +
- #: system/settings/rbp.xml
- msgctxt "#38010"
- msgid "GPU accelerated"
+ #. Setting #38011 "Show All Items entry"
+ #: system/settings/settings.xml
+ msgctxt "#38011"
 diff --git a/system/settings/settings.xml b/system/settings/settings.xml
 index 3ef33e0..44a9036 100644
 --- a/system/settings/settings.xml
