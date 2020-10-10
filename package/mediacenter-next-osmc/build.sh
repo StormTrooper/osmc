@@ -177,9 +177,6 @@ then
 	fi
 	if [ "$1" == "vero2" ] || [ "$1" == "vero3" ]; then install_patch "../../patches" "vrev"; fi     #Revert vero patches
 
-
-	if [ "$1" == "rbp2" ] || [ "$1" == "vero2" ] || [ "$1" == "vero3" ]; then install_patch "../../patches" "arev"; fi
-
 	install_patch "../../patches" "all"
 	test "$1" == pc && install_patch "../../patches" "pc"
 	if [ "$1" == "rbp2" ]
