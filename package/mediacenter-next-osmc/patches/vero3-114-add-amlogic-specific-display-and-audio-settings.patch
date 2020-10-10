@@ -47,27 +47,27 @@ index 1e81362..c6a6d5d 100644
  
  #: xbmc/network/NetworkServices.cpp
 @@ -21638,3 +21658,24 @@ msgstr ""
- msgid "Last modified"
+ msgctxt "#39150"
+ msgid "Limit the music video artwork fetched locally or applied from scraper remote art results to just those art types in the whitelist"
  msgstr ""
-
 +
 +#: Description of display setting with label # 13133
-+msgctxt "#39120"
++msgctxt "#39151"
 +msgid "Enable this to force RGB output for some legacy TVs such as Philips 2009 era TVs. Fixes blue / green screen flashes. Requires reboot."
 +msgstr ""
 +
 +#: Description of display setting with label # 13134
-+msgctxt "#39121"
++msgctxt "#39152"
 +msgid "Disables HPD events. Can fix sound issues. Requires reboot."
 +msgstr ""
 +
 +#: Description of display setting with label # 13135
-+msgctxt "#39122"
++msgctxt "#39153"
 +msgid "Turns off HDMI audio. Useful if you're using SPDIF audio and don't want audio on HDMI."
 +msgstr ""
 +
 +#: Description of display setting with label # 13136
-+msgctxt "#39123"
++msgctxt "#39154"
 +msgid "Some displays (usually LG) work better with 4:2:2 colour subsampling, especially at 4K resolutions."
 +msgstr ""
 +
