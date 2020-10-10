@@ -4244,9 +4244,9 @@ index 603c50aec9..f2a68289b2 100644
 +  if (aml_present() && CFile::Exists(SETTINGS_XML_FOLDER "aml-android.xml") && !Initialize(SETTINGS_XML_FOLDER "aml-android.xml"))
 +    CLog::Log(LOGFATAL, "Unable to load aml-android-specific settings definitions");
 +#endif // defined(HAS_LIBAMCODEC)
- #elif defined(TARGET_RASPBERRY_PI)
-   if (CFile::Exists(SETTINGS_XML_FOLDER "rbp.xml") && !Initialize(SETTINGS_XML_FOLDER "rbp.xml"))
-     CLog::Log(LOGFATAL, "Unable to load rbp-specific settings definitions");
+ #elif defined(TARGET_FREEBSD)
+   if (CFile::Exists(SETTINGS_XML_FOLDER "freebsd.xml") && !Initialize(SETTINGS_XML_FOLDER "freebsd.xml"))
+     CLog::Log(LOGFATAL, "Unable to load freebsd-specific settings definitions");
 @@ -540,6 +551,10 @@ bool CSettings::InitializeDefinitions()
  #elif defined(TARGET_LINUX)
    if (CFile::Exists(SETTINGS_XML_FOLDER "linux.xml") && !Initialize(SETTINGS_XML_FOLDER "linux.xml"))
