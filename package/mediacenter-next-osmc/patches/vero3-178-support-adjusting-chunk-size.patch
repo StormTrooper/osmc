@@ -29,9 +29,9 @@ index 07a6646614..2c89004f6f 100644
 +msgid "Enabling this option can resolve some connectivity issues when connecting via SMBv2, however doing so will reduce throughput regardless of SMB version"
 +msgstr ""
 +
- #empty strings from id 36637 to 36898
-
- #. Description of setting with label #729 "Enable SSL"
+ #. Text in confirm dialog when installing addon from zip
+ #: xbmc/addons/GUIWindowAddonBrowser.cpp
+ msgctxt "#36637"
 diff --git a/system/settings/settings.xml b/system/settings/settings.xml
 index 19cfe2db18..e24f2432cf 100755
 --- a/system/settings/settings.xml
