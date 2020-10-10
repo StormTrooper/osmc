@@ -4216,8 +4216,8 @@ index 603c50aec9..f2a68289b2 100644
 --- a/xbmc/settings/Settings.cpp
 +++ b/xbmc/settings/Settings.cpp
 @@ -33,6 +33,9 @@
- #if defined(TARGET_RASPBERRY_PI)
- #include "platform/linux/RBP.h"
+ #if defined(TARGET_DARWIN_EMBEDDED)
+ #include "SettingAddon.h"
  #endif
 +#if defined(HAS_LIBAMCODEC)
 +#include "utils/AMLUtils.h"
