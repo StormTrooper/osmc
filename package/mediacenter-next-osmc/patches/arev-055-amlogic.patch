@@ -5102,16 +5102,16 @@ index a6fc4d7b0f..ff77b5dcb8 100644
 --- a/xbmc/utils/Screenshot.cpp
 +++ b/xbmc/utils/Screenshot.cpp
 @@ -35,6 +35,10 @@
- #include "settings/SettingsComponent.h"
- #include "settings/windows/GUIControlSettings.h"
- 
+ #include "utils/JobManager.h"
+ #include "utils/URIUtils.h"
+ #include "utils/log.h"
 +#if defined(HAS_LIBAMCODEC)
 +#include "utils/ScreenshotAML.h"
 +#endif
 +
- #if defined(TARGET_WINDOWS)
- #include "rendering/dx/DeviceResources.h"
- #include <wrl/client.h>"
+
+ using namespace XFILE;
+
 @@ -169,6 +173,11 @@ bool CScreenshotSurface::capture()
  
    delete [] surface;
