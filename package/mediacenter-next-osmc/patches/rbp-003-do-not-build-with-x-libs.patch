@@ -18,7 +18,7 @@ index bf8a7f7..0ca5719 100644
 
  if(CORE_SYSTEM_NAME STREQUAL linux OR CORE_SYSTEM_NAME STREQUAL freebsd)
 -    list(APPEND ffmpeg_conf --enable-pic)
-+    list(APPEND ffmpeg_conf --cpu=${CPU} --disable-vaapi --disable-vdpau --disable-libxcb --disable-libxcb-shape --disable-libxcb-shm --disable-libxcb-xfixes --disable-xlib)
++    list(APPEND ffmpeg_conf --disable-vaapi --disable-vdpau --disable-libxcb --disable-libxcb-shape --disable-libxcb-shm --disable-libxcb-xfixes --disable-xlib)
    if(ENABLE_VAAPI)
      list(APPEND ffmpeg_conf --enable-vaapi)
    else()
