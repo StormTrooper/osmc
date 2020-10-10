@@ -5097,33 +5097,6 @@ index f073e3ca0b..357cb2edfc 100644
  if(CORE_PLATFORM_NAME_LC STREQUAL gbm OR CORE_PLATFORM_NAME_LC STREQUAL wayland)
    list(APPEND SOURCES BufferObject.cpp
                        BufferObjectFactory.cpp
-diff --git a/xbmc/utils/Screenshot.cpp b/xbmc/utils/Screenshot.cpp
-index a6fc4d7b0f..ff77b5dcb8 100644
---- a/xbmc/utils/Screenshot.cpp
-+++ b/xbmc/utils/Screenshot.cpp
-@@ -35,6 +35,10 @@
- #include "utils/JobManager.h"
- #include "utils/URIUtils.h"
- #include "utils/log.h"
-+#if defined(HAS_LIBAMCODEC)
-+#include "utils/ScreenshotAML.h"
-+#endif
-+
-
- using namespace XFILE;
-
-@@ -169,6 +173,11 @@ bool CScreenshotSurface::capture()
- 
-   delete [] surface;
- 
-+#if defined(HAS_LIBAMCODEC)
-+  // Captures the current visible videobuffer and blend it into m_buffer (captured overlay)
-+  CScreenshotAML::CaptureVideoFrame(m_buffer, m_width, m_height);
-+#endif
-+
- #else
-   //nothing to take a screenshot from
-   return false;
 diff --git a/xbmc/utils/ScreenshotAML.cpp b/xbmc/utils/ScreenshotAML.cpp
 new file mode 100644
 index 0000000000..8b67673382
