@@ -148,7 +148,7 @@ index 99fc708..d6f8ec1 100755
    // set RES_DESKTOP
    if (ResDesktop != RES_INVALID)
    {
--    CLog::Log(LOGNOTICE, "Found (%dx%d%s@%f) at %d, setting to RES_DESKTOP at %d",
+-    CLog::Log(LOGINFO, "Found (%dx%d%s@%f) at %d, setting to RES_DESKTOP at %d",
 -      resDesktop.iWidth, resDesktop.iHeight,
 -      resDesktop.dwFlags & D3DPRESENTFLAG_INTERLACED ? "i" : "",
 -      resDesktop.fRefreshRate,
