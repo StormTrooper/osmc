@@ -57,7 +57,7 @@ index 99fc708..d6f8ec1 100755
 --- a/xbmc/windowing/amlogic/WinSystemAmlogic.cpp
 +++ b/xbmc/windowing/amlogic/WinSystemAmlogic.cpp
 @@ -304,11 +304,32 @@ bool CWinSystemAmlogic::DestroyWindow()
-   return true;
+   return res;
  }
  
 +static std::string ModeFlagsToString(unsigned int flags, bool identifier)
@@ -148,7 +148,7 @@ index 99fc708..d6f8ec1 100755
    // set RES_DESKTOP
    if (ResDesktop != RES_INVALID)
    {
--    CLog::Log(LOGINFO, "Found (%dx%d%s@%f) at %d, setting to RES_DESKTOP at %d",
+-    CLog::Log(LOGNOTICE, "Found (%dx%d%s@%f) at %d, setting to RES_DESKTOP at %d",
 -      resDesktop.iWidth, resDesktop.iHeight,
 -      resDesktop.dwFlags & D3DPRESENTFLAG_INTERLACED ? "i" : "",
 -      resDesktop.fRefreshRate,
