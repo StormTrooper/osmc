@@ -1,0 +1,25 @@
+diff --git a/xbmc/utils/EGLUtils.cpp b/xbmc/utils/EGLUtils.cpp
+index 0d7c23891c..01df4ba7e7 100644
+--- a/xbmc/utils/EGLUtils.cpp
++++ b/xbmc/utils/EGLUtils.cpp
+@@ -21,6 +21,19 @@
+
+ namespace
+ {
++//! @todo remove when Raspberry Pi updates their EGL headers
++#ifndef EGL_NO_CONFIG_KHR
++#define EGL_NO_CONFIG_KHR static_cast<EGLConfig>(0)
++#endif
++#ifndef EGL_CONTEXT_PRIORITY_LEVEL_IMG
++#define EGL_CONTEXT_PRIORITY_LEVEL_IMG 0x3100
++#endif
++#ifndef EGL_CONTEXT_PRIORITY_HIGH_IMG
++#define EGL_CONTEXT_PRIORITY_HIGH_IMG 0x3101
++#endif
++#ifndef EGL_CONTEXT_PRIORITY_MEDIUM_IMG
++#define EGL_CONTEXT_PRIORITY_MEDIUM_IMG 0x3102
++#endif
+
+ #define X(VAL) std::make_pair(VAL, #VAL)
+ std::map<EGLint, const char*> eglAttributes =
+
