@@ -1,0 +1,2050 @@
+From 47c4f08983ab42fb86c6b9fdda41c71303db6cf3 Mon Sep 17 00:00:00 2001
+From: Greg McCarthy <greg@gjmccarthy.co.uk>
+Date: Wed, 14 Oct 2020 11:37:59 +0100
+Subject: [PATCH] Revert "Merge pull request #16760 from a1rwulf/announcements"
+
+This reverts commit 9655b4ffc45ad57f2511ac33309a786aa75c4de8, reversing
+changes made to 885742b185ff62fbd30b20e57ab4be6c63ea58ed.
+---
+ xbmc/Application.cpp                          | 41 +++-----
+ xbmc/GUIInfoManager.cpp                       |  2 +-
+ xbmc/PartyModeManager.cpp                     |  3 +-
+ xbmc/PlayListPlayer.cpp                       |  3 +-
+ .../cores/VideoPlayer/VideoPlayerRadioRDS.cpp |  8 +-
+ xbmc/dialogs/GUIDialogKeyboardGeneric.cpp     | 31 +++---
+ xbmc/dialogs/GUIDialogNumeric.cpp             |  4 +-
+ xbmc/games/dialogs/osd/DialogGameVolume.cpp   |  6 +-
+ xbmc/games/dialogs/osd/DialogGameVolume.h     | 10 +-
+ xbmc/interfaces/AnnouncementManager.cpp       | 60 ++----------
+ xbmc/interfaces/AnnouncementManager.h         | 42 ++------
+ xbmc/interfaces/IAnnouncer.h                  |  7 +-
+ xbmc/interfaces/json-rpc/IJSONRPCAnnouncer.h  |  6 +-
+ xbmc/interfaces/json-rpc/JSONRPC.cpp          | 10 +-
+ xbmc/interfaces/python/XBPython.cpp           | 28 +++---
+ xbmc/interfaces/python/XBPython.h             |  4 +-
+ xbmc/listproviders/DirectoryProvider.cpp      | 16 +--
+ xbmc/listproviders/DirectoryProvider.h        |  5 +-
+ xbmc/music/MusicDatabase.cpp                  | 13 ++-
+ xbmc/music/infoscanner/MusicInfoScanner.cpp   |  4 +-
+ xbmc/network/AirPlayServer.cpp                | 48 ++++-----
+ xbmc/network/AirPlayServer.h                  |  5 +-
+ xbmc/network/AirTunesServer.cpp               | 34 +++----
+ xbmc/network/AirTunesServer.h                 |  5 +-
+ xbmc/network/TCPServer.cpp                    |  5 +-
+ xbmc/network/TCPServer.h                      |  6 +-
+ xbmc/network/upnp/UPnPRenderer.cpp            | 98 ++++++++-----------
+ xbmc/network/upnp/UPnPRenderer.h              |  5 +-
+ xbmc/network/upnp/UPnPServer.cpp              | 30 +++---
+ xbmc/network/upnp/UPnPServer.h                |  5 +-
+ xbmc/peripherals/Peripherals.cpp              | 10 +-
+ xbmc/peripherals/Peripherals.h                |  4 +-
+ .../devices/PeripheralCecAdapter.cpp          | 31 +++---
+ .../devices/PeripheralCecAdapter.h            |  5 +-
+ xbmc/pictures/GUIWindowPictures.cpp           |  6 +-
+ xbmc/pictures/GUIWindowSlideShow.cpp          | 16 ++-
+ xbmc/platform/android/activity/XBMCApp.cpp    | 23 ++---
+ xbmc/platform/android/activity/XBMCApp.h      |  5 +-
+ .../darwin/ios-common/AnnounceReceiver.h      |  4 +-
+ .../darwin/ios-common/AnnounceReceiver.mm     |  8 +-
+ xbmc/playlists/PlayList.cpp                   |  6 +-
+ xbmc/powermanagement/PowerManager.cpp         |  8 +-
+ xbmc/pvr/PVRManager.cpp                       |  9 +-
+ xbmc/pvr/PVRManager.h                         |  5 +-
+ xbmc/settings/MediaSettings.cpp               |  2 +-
+ xbmc/utils/SaveFileStateJob.cpp               |  9 +-
+ xbmc/video/VideoDatabase.cpp                  | 18 ++--
+ xbmc/video/VideoInfoScanner.cpp               |  9 +-
+ xbmc/windowing/win10/WinEventsWin10.cpp       | 13 +--
+ xbmc/windowing/win10/WinEventsWin10.h         |  5 +-
+ xbmc/windows/GUIWindowHome.cpp                | 10 +-
+ xbmc/windows/GUIWindowHome.h                  |  5 +-
+ 52 files changed, 287 insertions(+), 468 deletions(-)
+
+diff --git a/xbmc/Application.cpp b/xbmc/Application.cpp
+index 6d00f2e3a4..7cdae43440 100644
+--- a/xbmc/Application.cpp
++++ b/xbmc/Application.cpp
+@@ -2612,7 +2612,7 @@ void CApplication::Stop(int exitCode)
+ 
+     CVariant vExitCode(CVariant::VariantTypeObject);
+     vExitCode["exitcode"] = exitCode;
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::System, "OnQuit", vExitCode);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::System, "xbmc", "OnQuit", vExitCode);
+ 
+     // Abort any active screensaver
+     WakeUpScreenSaverAndDPMS();
+@@ -3117,8 +3117,7 @@ void CApplication::OnPlayBackEnded()
+ 
+   CVariant data(CVariant::VariantTypeObject);
+   data["end"] = true;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnStop",
+-                                                     m_itemCurrentFile, data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnStop", m_itemCurrentFile, data);
+ 
+   CGUIMessage msg(GUI_MSG_PLAYBACK_ENDED, 0, 0);
+   CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(msg);
+@@ -3240,8 +3239,7 @@ void CApplication::OnPlayBackStopped()
+ 
+   CVariant data(CVariant::VariantTypeObject);
+   data["end"] = false;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnStop",
+-                                                     m_itemCurrentFile, data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnStop", m_itemCurrentFile, data);
+ 
+   CGUIMessage msg(GUI_MSG_PLAYBACK_STOPPED, 0, 0);
+   CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(msg);
+@@ -3265,8 +3263,7 @@ void CApplication::OnPlayBackPaused()
+   CVariant param;
+   param["player"]["speed"] = 0;
+   param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnPause",
+-                                                     m_itemCurrentFile, param);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnPause", m_itemCurrentFile, param);
+ }
+ 
+ void CApplication::OnPlayBackResumed()
+@@ -3278,8 +3275,7 @@ void CApplication::OnPlayBackResumed()
+   CVariant param;
+   param["player"]["speed"] = 1;
+   param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnResume",
+-                                                     m_itemCurrentFile, param);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnResume", m_itemCurrentFile, param);
+ }
+ 
+ void CApplication::OnPlayBackSpeedChanged(int iSpeed)
+@@ -3291,8 +3287,7 @@ void CApplication::OnPlayBackSpeedChanged(int iSpeed)
+   CVariant param;
+   param["player"]["speed"] = iSpeed;
+   param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnSpeedChanged",
+-                                                     m_itemCurrentFile, param);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnSpeedChanged", m_itemCurrentFile, param);
+ }
+ 
+ void CApplication::OnPlayBackSeek(int64_t iTime, int64_t seekOffset)
+@@ -3307,8 +3302,7 @@ void CApplication::OnPlayBackSeek(int64_t iTime, int64_t seekOffset)
+   CJSONUtils::MillisecondsToTimeObject(seekOffset, param["player"]["seekoffset"]);
+   param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+   param["player"]["speed"] = (int)m_appPlayer.GetPlaySpeed();
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnSeek",
+-                                                     m_itemCurrentFile, param);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnSeek", m_itemCurrentFile, param);
+   CServiceBroker::GetGUI()->GetInfoManager().GetInfoProviders().GetPlayerInfoProvider().SetDisplayAfterSeek(2500, static_cast<int>(seekOffset));
+ }
+ 
+@@ -3329,8 +3323,7 @@ void CApplication::OnAVStarted(const CFileItem &file)
+   CVariant param;
+   param["player"]["speed"] = 1;
+   param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnAVStart",
+-                                                     m_itemCurrentFile, param);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnAVStart", m_itemCurrentFile, param);
+ }
+ 
+ void CApplication::OnAVChange()
+@@ -3345,8 +3338,7 @@ void CApplication::OnAVChange()
+   CVariant param;
+   param["player"]["speed"] = 1;
+   param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnAVChange",
+-                                                     m_itemCurrentFile, param);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnAVChange", m_itemCurrentFile, param);
+ }
+ 
+ void CApplication::RequestVideoSettings(const CFileItem &fileItem)
+@@ -3464,7 +3456,7 @@ bool CApplication::ToggleDPMS(bool manual)
+       m_dpmsIsManual = false;
+       SetRenderGUI(true);
+       CheckOSScreenSaverInhibitionSetting();
+-      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::GUI, "OnDPMSDeactivated");
++      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::GUI, "xbmc", "OnDPMSDeactivated");
+       return dpms->DisablePowerSaving();
+     }
+     else
+@@ -3475,7 +3467,7 @@ bool CApplication::ToggleDPMS(bool manual)
+         m_dpmsIsManual = manual;
+         SetRenderGUI(false);
+         CheckOSScreenSaverInhibitionSetting();
+-        CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::GUI, "OnDPMSActivated");
++        CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::GUI, "xbmc", "OnDPMSActivated");
+         return true;
+       }
+     }
+@@ -3506,8 +3498,7 @@ bool CApplication::WakeUpScreenSaverAndDPMS(bool bPowerOffKeyPressed /* = false
+     // allow listeners to ignore the deactivation if it precedes a powerdown/suspend etc
+     CVariant data(CVariant::VariantTypeObject);
+     data["shuttingdown"] = bPowerOffKeyPressed;
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::GUI,
+-                                                       "OnScreensaverDeactivated", data);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::GUI, "xbmc", "OnScreensaverDeactivated", data);
+   }
+ 
+   return result;
+@@ -3715,7 +3706,7 @@ void CApplication::ActivateScreenSaver(bool forceType /*= false */)
+   }
+ 
+   m_screensaverActive = true;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::GUI, "OnScreensaverActivated");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::GUI, "xbmc", "OnScreensaverActivated");
+ 
+   // disable screensaver lock from the login screen
+   m_iScreenSaveLock = CServiceBroker::GetGUI()->GetWindowManager().GetActiveWindow() == WINDOW_LOGIN_SCREEN ? 1 : 0;
+@@ -3918,8 +3909,7 @@ bool CApplication::OnMessage(CGUIMessage& message)
+       CVariant param;
+       param["player"]["speed"] = 1;
+       param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+-      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnPlay",
+-                                                         m_itemCurrentFile, param);
++      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnPlay", m_itemCurrentFile, param);
+ 
+       // we don't want a busy dialog when switching channels
+       if (!m_itemCurrentFile->IsLiveTV())
+@@ -4468,8 +4458,7 @@ void CApplication::VolumeChanged()
+   CVariant data(CVariant::VariantTypeObject);
+   data["volume"] = GetVolumePercent();
+   data["muted"] = m_muted;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Application, "OnVolumeChanged",
+-                                                     data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Application, "xbmc", "OnVolumeChanged", data);
+ 
+   // if player has volume control, set it.
+   m_appPlayer.SetVolume(m_volumeLevel);
+diff --git a/xbmc/GUIInfoManager.cpp b/xbmc/GUIInfoManager.cpp
+index 8c8d6bc9a0..5c8ec883c1 100644
+--- a/xbmc/GUIInfoManager.cpp
++++ b/xbmc/GUIInfoManager.cpp
+@@ -10631,7 +10631,7 @@ void CGUIInfoManager::SetCurrentItem(const CFileItem &item)
+ 
+   m_infoProviders.InitCurrentItem(m_currentFile);
+ 
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Info, "OnChanged");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Info, "xbmc", "OnChanged");
+ }
+ 
+ void CGUIInfoManager::SetCurrentAlbumThumb(const std::string &thumbFileName)
+diff --git a/xbmc/PartyModeManager.cpp b/xbmc/PartyModeManager.cpp
+index 8a34c5c4ec..6d22759d64 100644
+--- a/xbmc/PartyModeManager.cpp
++++ b/xbmc/PartyModeManager.cpp
+@@ -570,7 +570,6 @@ void CPartyModeManager::Announce()
+ 
+     data["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+     data["property"]["partymode"] = m_bEnabled;
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnPropertyChanged",
+-                                                       data);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnPropertyChanged", data);
+   }
+ }
+diff --git a/xbmc/PlayListPlayer.cpp b/xbmc/PlayListPlayer.cpp
+index 4a0d640693..a5825567ef 100644
+--- a/xbmc/PlayListPlayer.cpp
++++ b/xbmc/PlayListPlayer.cpp
+@@ -764,8 +764,7 @@ void CPlayListPlayer::AnnouncePropertyChanged(int iPlaylist, const std::string &
+   CVariant data;
+   data["player"]["playerid"] = iPlaylist;
+   data["property"][strProperty] = value;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnPropertyChanged",
+-                                                     data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnPropertyChanged", data);
+ }
+ 
+ int PLAYLIST::CPlayListPlayer::GetMessageMask()
+diff --git a/xbmc/cores/VideoPlayer/VideoPlayerRadioRDS.cpp b/xbmc/cores/VideoPlayer/VideoPlayerRadioRDS.cpp
+index 7c2fc9184e..7eac1c7fd4 100644
+--- a/xbmc/cores/VideoPlayer/VideoPlayerRadioRDS.cpp
++++ b/xbmc/cores/VideoPlayer/VideoPlayerRadioRDS.cpp
+@@ -938,7 +938,7 @@ unsigned int CDVDRadioRDSData::DecodeTA_TP(uint8_t *msgElement)
+ 
+     CVariant data(CVariant::VariantTypeObject);
+     data["on"] = true;
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::PVR, "RDSRadioTA", data);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::PVR, "xbmc", "RDSRadioTA", data);
+   }
+ 
+   if (!traffic_announcement && m_TA_TP_TrafficAdvisory && CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool("pvrplayback.trafficadvisory"))
+@@ -948,7 +948,7 @@ unsigned int CDVDRadioRDSData::DecodeTA_TP(uint8_t *msgElement)
+ 
+     CVariant data(CVariant::VariantTypeObject);
+     data["on"] = false;
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::PVR, "RDSRadioTA", data);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::PVR, "xbmc", "RDSRadioTA", data);
+   }
+ 
+   return 4;
+@@ -1173,7 +1173,7 @@ unsigned int CDVDRadioRDSData::DecodeRTC(uint8_t *msgElement)
+ 
+   CVariant data(CVariant::VariantTypeObject);
+   data["dateTime"] = (m_RTC_DateTime.IsValid()) ? m_RTC_DateTime.GetAsRFC1123DateTime() : "";
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::PVR, "RDSRadioRTC", data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::PVR, "xbmc", "RDSRadioRTC", data);
+ 
+   return 8;
+ }
+@@ -1730,6 +1730,6 @@ void CDVDRadioRDSData::SendTMCSignal(unsigned int flags, uint8_t *data)
+     msg["y"]       = (unsigned int)(m_TMC_LastData[1]<<8 | m_TMC_LastData[2]);
+     msg["z"]       = (unsigned int)(m_TMC_LastData[3]<<8 | m_TMC_LastData[4]);
+ 
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::PVR, "RDSRadioTMC", msg);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::PVR, "xbmc", "RDSRadioTMC", msg);
+   }
+ }
+diff --git a/xbmc/dialogs/GUIDialogKeyboardGeneric.cpp b/xbmc/dialogs/GUIDialogKeyboardGeneric.cpp
+index f3b55d118e..5a36aa8a22 100644
+--- a/xbmc/dialogs/GUIDialogKeyboardGeneric.cpp
++++ b/xbmc/dialogs/GUIDialogKeyboardGeneric.cpp
+@@ -6,30 +6,29 @@
+  *  See LICENSES/README.md for more information.
+  */
+ 
+-#include "GUIDialogKeyboardGeneric.h"
+-
+-#include "GUIDialogNumeric.h"
+-#include "GUIUserMessages.h"
+-#include "ServiceBroker.h"
++#include "interfaces/AnnouncementManager.h"
++#include "input/XBMC_vkeys.h"
++#include "input/InputCodingTable.h"
+ #include "guilib/GUIComponent.h"
+ #include "guilib/GUIEditControl.h"
+ #include "guilib/GUILabelControl.h"
+ #include "guilib/GUIWindowManager.h"
+-#include "guilib/LocalizeStrings.h"
+-#include "input/InputCodingTable.h"
+-#include "input/Key.h"
+ #include "input/KeyboardLayoutManager.h"
+-#include "input/XBMC_vkeys.h"
+-#include "interfaces/AnnouncementManager.h"
+-#include "messaging/ApplicationMessenger.h"
++#include "input/Key.h"
++#include "guilib/LocalizeStrings.h"
++#include "GUIUserMessages.h"
++#include "GUIDialogNumeric.h"
++#include "GUIDialogKeyboardGeneric.h"
++#include "ServiceBroker.h"
+ #include "settings/Settings.h"
+ #include "settings/SettingsComponent.h"
+-#include "utils/CharsetConverter.h"
+ #include "utils/RegExp.h"
+-#include "utils/StringUtils.h"
+ #include "utils/Variant.h"
+-#include "utils/log.h"
++#include "utils/StringUtils.h"
++#include "messaging/ApplicationMessenger.h"
++#include "utils/CharsetConverter.h"
+ #include "windowing/WinSystem.h"
++#include "utils/log.h"
+ 
+ #ifdef TARGET_ANDROID
+ #include <androidjni/Intent.h>
+@@ -179,7 +178,7 @@ void CGUIDialogKeyboardGeneric::OnInitWindow()
+   data["title"] = m_strHeading;
+   data["type"] = !m_hiddenInput ? "keyboard" : "password";
+   data["value"] = GetText();
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Input, "OnInputRequested", data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Input, "xbmc", "OnInputRequested", data);
+ }
+ 
+ bool CGUIDialogKeyboardGeneric::OnAction(const CAction &action)
+@@ -512,7 +511,7 @@ void CGUIDialogKeyboardGeneric::OnDeinitWindow(int nextWindowID)
+   // reset the heading (we don't always have this)
+   m_strHeading = "";
+ 
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Input, "OnInputFinished");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Input, "xbmc", "OnInputFinished");
+ }
+ 
+ void CGUIDialogKeyboardGeneric::MoveCursor(int iAmount)
+diff --git a/xbmc/dialogs/GUIDialogNumeric.cpp b/xbmc/dialogs/GUIDialogNumeric.cpp
+index 174d07a611..8a6b0cee56 100644
+--- a/xbmc/dialogs/GUIDialogNumeric.cpp
++++ b/xbmc/dialogs/GUIDialogNumeric.cpp
+@@ -86,7 +86,7 @@ void CGUIDialogNumeric::OnInitWindow()
+ 
+   data["value"] = GetOutputString();
+ 
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Input, "OnInputRequested", data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Input, "xbmc", "OnInputRequested", data);
+ }
+ 
+ void CGUIDialogNumeric::OnDeinitWindow(int nextWindowID)
+@@ -94,7 +94,7 @@ void CGUIDialogNumeric::OnDeinitWindow(int nextWindowID)
+   // call base class
+   CGUIDialog::OnDeinitWindow(nextWindowID);
+ 
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Input, "OnInputFinished");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Input, "xbmc", "OnInputFinished");
+ }
+ 
+ bool CGUIDialogNumeric::OnAction(const CAction &action)
+diff --git a/xbmc/games/dialogs/osd/DialogGameVolume.cpp b/xbmc/games/dialogs/osd/DialogGameVolume.cpp
+index 7dbf7fac01..0d38a6adb2 100644
+--- a/xbmc/games/dialogs/osd/DialogGameVolume.cpp
++++ b/xbmc/games/dialogs/osd/DialogGameVolume.cpp
+@@ -106,11 +106,11 @@ bool CDialogGameVolume::IsShown() const
+ }
+ 
+ void CDialogGameVolume::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                                 const std::string& sender,
+-                                 const std::string& message,
++                                 const char* sender,
++                                 const char* message,
+                                  const CVariant& data)
+ {
+-  if (flag == ANNOUNCEMENT::Application && message == "OnVolumeChanged")
++  if (flag == ANNOUNCEMENT::Application && strcmp(message, "OnVolumeChanged") == 0)
+   {
+     const float volumePercent = static_cast<float>(data["volume"].asDouble());
+ 
+diff --git a/xbmc/games/dialogs/osd/DialogGameVolume.h b/xbmc/games/dialogs/osd/DialogGameVolume.h
+index d06f140a52..07d7f5b8f1 100644
+--- a/xbmc/games/dialogs/osd/DialogGameVolume.h
++++ b/xbmc/games/dialogs/osd/DialogGameVolume.h
+@@ -41,11 +41,11 @@ public:
+   // implementation of IGUIVolumeBarCallback
+   bool IsShown() const override;
+ 
+-    // implementation of IAnnouncer
+-    void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                  const std::string& sender,
+-                  const std::string& message,
+-                  const CVariant& data) override;
++  // implementation of IAnnouncer
++  void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
++                const char* sender,
++                const char* message,
++                const CVariant& data) override;
+ 
+ protected:
+   // implementation of CGUIWindow via CGUIDialogSlider
+diff --git a/xbmc/interfaces/AnnouncementManager.cpp b/xbmc/interfaces/AnnouncementManager.cpp
+index 879cbe55a1..31d2f3ae95 100644
+--- a/xbmc/interfaces/AnnouncementManager.cpp
++++ b/xbmc/interfaces/AnnouncementManager.cpp
+@@ -25,8 +25,6 @@
+ 
+ using namespace ANNOUNCEMENT;
+ 
+-const std::string CAnnouncementManager::ANNOUNCEMENT_SENDER = "xbmc";
+-
+ CAnnouncementManager::CAnnouncementManager() : CThread("Announce")
+ {
+ }
+@@ -75,57 +73,24 @@ void CAnnouncementManager::RemoveAnnouncer(IAnnouncer *listener)
+   }
+ }
+ 
+-void CAnnouncementManager::Announce(AnnouncementFlag flag, const std::string& message)
+-{
+-  CVariant data;
+-  Announce(flag, ANNOUNCEMENT_SENDER, message, CFileItemPtr(), data);
+-}
+-
+-void CAnnouncementManager::Announce(AnnouncementFlag flag,
+-                                    const std::string& message,
+-                                    const CVariant& data)
+-{
+-  Announce(flag, ANNOUNCEMENT_SENDER, message, CFileItemPtr(), data);
+-}
+-
+-void CAnnouncementManager::Announce(AnnouncementFlag flag,
+-                                    const std::string& message,
+-                                    const std::shared_ptr<const CFileItem>& item)
++void CAnnouncementManager::Announce(AnnouncementFlag flag, const char *sender, const char *message)
+ {
+   CVariant data;
+-  Announce(flag, ANNOUNCEMENT_SENDER, message, item, data);
+-}
+-
+-void CAnnouncementManager::Announce(AnnouncementFlag flag,
+-                                    const std::string& message,
+-                                    const std::shared_ptr<const CFileItem>& item,
+-                                    const CVariant& data)
+-{
+-  Announce(flag, ANNOUNCEMENT_SENDER, message, item, data);
++  Announce(flag, sender, message, CFileItemPtr(), data);
+ }
+ 
+-
+-void CAnnouncementManager::Announce(AnnouncementFlag flag,
+-                                    const std::string& sender,
+-                                    const std::string& message)
++void CAnnouncementManager::Announce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+ {
+-  CVariant data;
+   Announce(flag, sender, message, CFileItemPtr(), data);
+ }
+ 
+-void CAnnouncementManager::Announce(AnnouncementFlag flag,
+-                                    const std::string& sender,
+-                                    const std::string& message,
+-                                    const CVariant& data)
++void CAnnouncementManager::Announce(AnnouncementFlag flag, const char *sender, const char *message, const std::shared_ptr<const CFileItem>& item)
+ {
+-  Announce(flag, sender, message, CFileItemPtr(), data);
++  CVariant data;
++  Announce(flag, sender, message, item, data);
+ }
+ 
+-void CAnnouncementManager::Announce(AnnouncementFlag flag,
+-                                    const std::string& sender,
+-                                    const std::string& message,
+-                                    const std::shared_ptr<const CFileItem>& item,
+-                                    const CVariant& data)
++void CAnnouncementManager::Announce(AnnouncementFlag flag, const char *sender, const char *message, const std::shared_ptr<const CFileItem>& item, const CVariant &data)
+ {
+   CAnnounceData announcement;
+   announcement.flag = flag;
+@@ -143,10 +108,7 @@ void CAnnouncementManager::Announce(AnnouncementFlag flag,
+   m_queueEvent.Set();
+ }
+ 
+-void CAnnouncementManager::DoAnnounce(AnnouncementFlag flag,
+-                                      const std::string& sender,
+-                                      const std::string& message,
+-                                      const CVariant& data)
++void CAnnouncementManager::DoAnnounce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+ {
+   CLog::Log(LOGDEBUG, LOGANNOUNCE, "CAnnouncementManager - Announcement: {} from {}", message, sender);
+ 
+@@ -159,11 +121,7 @@ void CAnnouncementManager::DoAnnounce(AnnouncementFlag flag,
+     announcers[i]->Announce(flag, sender, message, data);
+ }
+ 
+-void CAnnouncementManager::DoAnnounce(AnnouncementFlag flag,
+-                                      const std::string& sender,
+-                                      const std::string& message,
+-                                      CFileItemPtr item,
+-                                      const CVariant& data)
++void CAnnouncementManager::DoAnnounce(AnnouncementFlag flag, const char *sender, const char *message, CFileItemPtr item, const CVariant &data)
+ {
+   if (item == nullptr)
+   {
+diff --git a/xbmc/interfaces/AnnouncementManager.h b/xbmc/interfaces/AnnouncementManager.h
+index 87ce3dbad9..99f262e08d 100644
+--- a/xbmc/interfaces/AnnouncementManager.h
++++ b/xbmc/interfaces/AnnouncementManager.h
+@@ -34,43 +34,17 @@ namespace ANNOUNCEMENT
+     void AddAnnouncer(IAnnouncer *listener);
+     void RemoveAnnouncer(IAnnouncer *listener);
+ 
+-    void Announce(AnnouncementFlag flag, const std::string& message);
+-    void Announce(AnnouncementFlag flag, const std::string& message, const CVariant& data);
+-    void Announce(AnnouncementFlag flag,
+-                  const std::string& message,
+-                  const std::shared_ptr<const CFileItem>& item);
+-    void Announce(AnnouncementFlag flag,
+-                  const std::string& message,
+-                  const std::shared_ptr<const CFileItem>& item,
+-                  const CVariant& data);
+-
+-    void Announce(AnnouncementFlag flag, const std::string& sender, const std::string& message);
+-    void Announce(AnnouncementFlag flag,
+-                  const std::string& sender,
+-                  const std::string& message,
+-                  const CVariant& data);
+-    void Announce(AnnouncementFlag flag,
+-                  const std::string& sender,
+-                  const std::string& message,
+-                  const std::shared_ptr<const CFileItem>& item,
+-                  const CVariant& data);
+-
+-    // The sender is not related to the application name.
+-    // Also it's part of Kodi's API - changing it will break
+-    // a big number of python addons and third party json consumers.
+-    static const std::string ANNOUNCEMENT_SENDER;
++    void Announce(AnnouncementFlag flag, const char *sender, const char *message);
++    void Announce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
++    void Announce(AnnouncementFlag flag, const char *sender, const char *message,
++        const std::shared_ptr<const CFileItem>& item);
++    void Announce(AnnouncementFlag flag, const char *sender, const char *message,
++        const std::shared_ptr<const CFileItem>& item, const CVariant &data);
+ 
+   protected:
+     void Process() override;
+-    void DoAnnounce(AnnouncementFlag flag,
+-                    const std::string& sender,
+-                    const std::string& message,
+-                    CFileItemPtr item,
+-                    const CVariant& data);
+-    void DoAnnounce(AnnouncementFlag flag,
+-                    const std::string& sender,
+-                    const std::string& message,
+-                    const CVariant& data);
++    void DoAnnounce(AnnouncementFlag flag, const char *sender, const char *message, CFileItemPtr item, const CVariant &data);
++    void DoAnnounce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
+ 
+     struct CAnnounceData
+     {
+diff --git a/xbmc/interfaces/IAnnouncer.h b/xbmc/interfaces/IAnnouncer.h
+index 7c20203573..3a8cb25e16 100644
+--- a/xbmc/interfaces/IAnnouncer.h
++++ b/xbmc/interfaces/IAnnouncer.h
+@@ -8,8 +8,6 @@
+ 
+ #pragma once
+ 
+-#include <string>
+-
+ class CVariant;
+ namespace ANNOUNCEMENT
+ {
+@@ -72,9 +70,6 @@ namespace ANNOUNCEMENT
+   public:
+     IAnnouncer() = default;
+     virtual ~IAnnouncer() = default;
+-    virtual void Announce(AnnouncementFlag flag,
+-                          const std::string& sender,
+-                          const std::string& message,
+-                          const CVariant& data) = 0;
++    virtual void Announce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) = 0;
+   };
+ }
+diff --git a/xbmc/interfaces/json-rpc/IJSONRPCAnnouncer.h b/xbmc/interfaces/json-rpc/IJSONRPCAnnouncer.h
+index af7d2e8b3d..46daee277d 100644
+--- a/xbmc/interfaces/json-rpc/IJSONRPCAnnouncer.h
++++ b/xbmc/interfaces/json-rpc/IJSONRPCAnnouncer.h
+@@ -20,11 +20,7 @@ namespace JSONRPC
+     ~IJSONRPCAnnouncer() override = default;
+ 
+   protected:
+-    static std::string AnnouncementToJSONRPC(ANNOUNCEMENT::AnnouncementFlag flag,
+-                                             const std::string& sender,
+-                                             const std::string& method,
+-                                             const CVariant& data,
+-                                             bool compactOutput)
++    static std::string AnnouncementToJSONRPC(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *method, const CVariant &data, bool compactOutput)
+     {
+       CVariant root;
+       root["jsonrpc"] = "2.0";
+diff --git a/xbmc/interfaces/json-rpc/JSONRPC.cpp b/xbmc/interfaces/json-rpc/JSONRPC.cpp
+index e5f50bfd4d..f7b5ee7574 100644
+--- a/xbmc/interfaces/json-rpc/JSONRPC.cpp
++++ b/xbmc/interfaces/json-rpc/JSONRPC.cpp
+@@ -214,15 +214,13 @@ JSONRPC_STATUS CJSONRPC::SetConfiguration(const std::string &method, ITransportL
+ JSONRPC_STATUS CJSONRPC::NotifyAll(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant& parameterObject, CVariant &result)
+ {
+   if (parameterObject["data"].isNull())
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Other,
+-                                                       parameterObject["sender"].asString(),
+-                                                       parameterObject["message"].asString());
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Other, parameterObject["sender"].asString().c_str(),
++      parameterObject["message"].asString().c_str());
+   else
+   {
+     CVariant data = parameterObject["data"];
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Other,
+-                                                       parameterObject["sender"].asString(),
+-                                                       parameterObject["message"].asString(), data);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Other, parameterObject["sender"].asString().c_str(),
++      parameterObject["message"].asString().c_str(), data);
+   }
+ 
+   return ACK;
+diff --git a/xbmc/interfaces/python/XBPython.cpp b/xbmc/interfaces/python/XBPython.cpp
+index 017eea5e1b..3cef76ed24 100644
+--- a/xbmc/interfaces/python/XBPython.cpp
++++ b/xbmc/interfaces/python/XBPython.cpp
+@@ -68,41 +68,41 @@ XBPython::~XBPython()
+   (l.hadSomethingRemoved ? (std::find(l.begin(), l.end(), v) != l.end()) : true)
+ 
+ void XBPython::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                        const std::string& sender,
+-                        const std::string& message,
++                        const char* sender,
++                        const char* message,
+                         const CVariant& data)
+ {
+   if (flag & ANNOUNCEMENT::VideoLibrary)
+   {
+-    if (message == "OnScanFinished")
++    if (strcmp(message, "OnScanFinished") == 0)
+       OnScanFinished("video");
+-    else if (message == "OnScanStarted")
++    else if (strcmp(message, "OnScanStarted") == 0)
+       OnScanStarted("video");
+-    else if (message == "OnCleanStarted")
++    else if (strcmp(message, "OnCleanStarted") == 0)
+       OnCleanStarted("video");
+-    else if (message == "OnCleanFinished")
++    else if (strcmp(message, "OnCleanFinished") == 0)
+       OnCleanFinished("video");
+   }
+   else if (flag & ANNOUNCEMENT::AudioLibrary)
+   {
+-    if (message == "OnScanFinished")
++    if (strcmp(message, "OnScanFinished") == 0)
+       OnScanFinished("music");
+-    else if (message == "OnScanStarted")
++    else if (strcmp(message, "OnScanStarted") == 0)
+       OnScanStarted("music");
+-    else if (message == "OnCleanStarted")
++    else if (strcmp(message, "OnCleanStarted") == 0)
+       OnCleanStarted("music");
+-    else if (message == "OnCleanFinished")
++    else if (strcmp(message, "OnCleanFinished") == 0)
+       OnCleanFinished("music");
+   }
+   else if (flag & ANNOUNCEMENT::GUI)
+   {
+-    if (message == "OnScreensaverDeactivated")
++    if (strcmp(message, "OnScreensaverDeactivated") == 0)
+       OnScreensaverDeactivated();
+-    else if (message == "OnScreensaverActivated")
++    else if (strcmp(message, "OnScreensaverActivated") == 0)
+       OnScreensaverActivated();
+-    else if (message == "OnDPMSDeactivated")
++    else if (strcmp(message, "OnDPMSDeactivated") == 0)
+       OnDPMSDeactivated();
+-    else if (message == "OnDPMSActivated")
++    else if (strcmp(message, "OnDPMSActivated") == 0)
+       OnDPMSActivated();
+   }
+ 
+diff --git a/xbmc/interfaces/python/XBPython.h b/xbmc/interfaces/python/XBPython.h
+index fff2dd3e3a..40077cd587 100644
+--- a/xbmc/interfaces/python/XBPython.h
++++ b/xbmc/interfaces/python/XBPython.h
+@@ -70,8 +70,8 @@ public:
+   void OnQueueNextItem() override;
+ 
+   void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                const std::string& sender,
+-                const std::string& message,
++                const char* sender,
++                const char* message,
+                 const CVariant& data) override;
+   void RegisterPythonPlayerCallBack(IPlayerCallback* pCallback);
+   void UnregisterPythonPlayerCallBack(IPlayerCallback* pCallback);
+diff --git a/xbmc/listproviders/DirectoryProvider.cpp b/xbmc/listproviders/DirectoryProvider.cpp
+index 69a84048d2..ea351da88c 100644
+--- a/xbmc/listproviders/DirectoryProvider.cpp
++++ b/xbmc/listproviders/DirectoryProvider.cpp
+@@ -222,10 +222,7 @@ bool CDirectoryProvider::Update(bool forceRefresh)
+   return changed; //! @todo Also returned changed if properties are changed (if so, need to update scroll to letter).
+ }
+ 
+-void CDirectoryProvider::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                                  const std::string& sender,
+-                                  const std::string& message,
+-                                  const CVariant& data)
++void CDirectoryProvider::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+ {
+   // we are only interested in library, player and GUI changes
+   if ((flag & (ANNOUNCEMENT::VideoLibrary | ANNOUNCEMENT::AudioLibrary | ANNOUNCEMENT::Player | ANNOUNCEMENT::GUI)) == 0)
+@@ -243,7 +240,9 @@ void CDirectoryProvider::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+ 
+     if (flag & ANNOUNCEMENT::Player)
+     {
+-      if (message == "OnPlay" || message == "OnResume" || message == "OnStop")
++      if (strcmp(message, "OnPlay") == 0 ||
++          strcmp(message, "OnResume") == 0 ||
++          strcmp(message, "OnStop") == 0)
+       {
+         if (m_currentSort.sortBy == SortByNone || // not nice, but many directories that need to be refreshed on start/stop have no special sort order (e.g. in progress movies)
+             m_currentSort.sortBy == SortByLastPlayed ||
+@@ -260,8 +259,11 @@ void CDirectoryProvider::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+ 
+       // if there was a database update, we set the update state
+       // to PENDING to fire off a new job in the next update
+-      if (message == "OnScanFinished" || message == "OnCleanFinished" || message == "OnUpdate" ||
+-          message == "OnRemove" || message == "OnRefresh")
++      if (strcmp(message, "OnScanFinished") == 0 ||
++          strcmp(message, "OnCleanFinished") == 0 ||
++          strcmp(message, "OnUpdate") == 0 ||
++          strcmp(message, "OnRemove") == 0 ||
++          strcmp(message, "OnRefresh") == 0)
+         m_updateState = INVALIDATED;
+     }
+   }
+diff --git a/xbmc/listproviders/DirectoryProvider.h b/xbmc/listproviders/DirectoryProvider.h
+index 14c6a4e3f9..f47afc7c72 100644
+--- a/xbmc/listproviders/DirectoryProvider.h
++++ b/xbmc/listproviders/DirectoryProvider.h
+@@ -54,10 +54,7 @@ public:
+   ~CDirectoryProvider() override;
+ 
+   bool Update(bool forceRefresh) override;
+-  void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                const std::string& sender,
+-                const std::string& message,
+-                const CVariant& data) override;
++  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+   void Fetch(std::vector<CGUIListItemPtr> &items) override;
+   void Reset() override;
+   bool OnClick(const CGUIListItemPtr &item) override;
+diff --git a/xbmc/music/MusicDatabase.cpp b/xbmc/music/MusicDatabase.cpp
+index aff8e2ddba..574e7a06c9 100644
+--- a/xbmc/music/MusicDatabase.cpp
++++ b/xbmc/music/MusicDatabase.cpp
+@@ -85,7 +85,7 @@ static void AnnounceRemove(const std::string& content, int id)
+   data["id"] = id;
+   if (g_application.IsMusicScanning())
+     data["transaction"] = true;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnRemove", data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnRemove", data);
+ }
+ 
+ static void AnnounceUpdate(const std::string& content, int id, bool added = false)
+@@ -97,7 +97,7 @@ static void AnnounceUpdate(const std::string& content, int id, bool added = fals
+     data["transaction"] = true;
+   if (added)
+     data["added"] = true;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnUpdate", data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnUpdate", data);
+ }
+ 
+ CMusicDatabase::CMusicDatabase(void)
+@@ -4080,7 +4080,7 @@ int CMusicDatabase::Cleanup(CGUIDialogProgress* progressDialog /*= nullptr*/)
+   int ret = ERROR_OK;
+   unsigned int time = XbmcThreads::SystemClockMillis();
+   CLog::Log(LOGINFO, "%s: Starting musicdatabase cleanup ..", __FUNCTION__);
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnCleanStarted");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnCleanStarted");
+ 
+   SetLibraryLastCleaned();
+ 
+@@ -4216,7 +4216,7 @@ int CMusicDatabase::Cleanup(CGUIDialogProgress* progressDialog /*= nullptr*/)
+   time = XbmcThreads::SystemClockMillis() - time;
+   CLog::Log(LOGINFO, "%s: Cleaning musicdatabase done. Operation took %s", __FUNCTION__,
+             StringUtils::SecondsToTimeString(time / 1000).c_str());
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnCleanFinished");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnCleanFinished");
+ 
+   if (!Compress(false))
+   {
+@@ -4228,7 +4228,7 @@ error:
+   RollbackTransaction();
+   // Recreate DELETE triggers on song_artist and album_artist
+   CreateRemovedLinkTriggers();
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnCleanFinished");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnCleanFinished");
+   return ret;
+ }
+ 
+@@ -11155,8 +11155,7 @@ void CMusicDatabase::ExportToXML(const CLibExportSettings& settings,  CGUIDialog
+       data["file"] = xmlFile;
+       if (iFailCount > 0)
+         data["failcount"] = iFailCount;
+-      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnExport",
+-                                                         data);
++      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnExport", data);
+     }
+   }
+   catch (...)
+diff --git a/xbmc/music/infoscanner/MusicInfoScanner.cpp b/xbmc/music/infoscanner/MusicInfoScanner.cpp
+index a6803ba364..24b7eff7ce 100644
+--- a/xbmc/music/infoscanner/MusicInfoScanner.cpp
++++ b/xbmc/music/infoscanner/MusicInfoScanner.cpp
+@@ -76,7 +76,7 @@ CMusicInfoScanner::~CMusicInfoScanner() = default;
+ void CMusicInfoScanner::Process()
+ {
+   m_bStop = false;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnScanStarted");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnScanStarted");
+   try
+   {
+     if (m_showDialog && !CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_BACKGROUNDUPDATE))
+@@ -272,7 +272,7 @@ void CMusicInfoScanner::Process()
+   CLog::Log(LOGDEBUG, "%s - Finished scan", __FUNCTION__);
+ 
+   m_bRunning = false;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnScanFinished");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnScanFinished");
+ 
+   // we need to clear the musicdb cache and update any active lists
+   CUtil::DeleteMusicDatabaseDirectoryCache();
+diff --git a/xbmc/network/AirPlayServer.cpp b/xbmc/network/AirPlayServer.cpp
+index 8bf7dc8b32..f12539661c 100644
+--- a/xbmc/network/AirPlayServer.cpp
++++ b/xbmc/network/AirPlayServer.cpp
+@@ -9,31 +9,29 @@
+  *  from Airplayer. https://github.com/PascalW/Airplayer
+  */
+ 
++#include "network/Network.h"
+ #include "AirPlayServer.h"
+ 
+-#include "Application.h"
+-#include "CompileInfo.h"
++#include <netinet/in.h>
++#include <arpa/inet.h>
++#include "utils/log.h"
++#include "utils/StringUtils.h"
++#include "threads/SingleLock.h"
++#include "filesystem/File.h"
++#include "filesystem/Directory.h"
+ #include "FileItem.h"
+-#include "PlayListPlayer.h"
++#include "Application.h"
+ #include "ServiceBroker.h"
+-#include "URL.h"
+-#include "cores/IPlayer.h"
+-#include "filesystem/Directory.h"
+-#include "filesystem/File.h"
+-#include "input/Key.h"
+-#include "interfaces/AnnouncementManager.h"
+ #include "messaging/ApplicationMessenger.h"
+-#include "network/Network.h"
+-#include "settings/Settings.h"
+-#include "settings/SettingsComponent.h"
+-#include "threads/SingleLock.h"
++#include "PlayListPlayer.h"
+ #include "utils/Digest.h"
+-#include "utils/StringUtils.h"
+ #include "utils/Variant.h"
+-#include "utils/log.h"
+-
+-#include <arpa/inet.h>
+-#include <netinet/in.h>
++#include "settings/Settings.h"
++#include "settings/SettingsComponent.h"
++#include "input/Key.h"
++#include "URL.h"
++#include "cores/IPlayer.h"
++#include "interfaces/AnnouncementManager.h"
+ #ifdef HAS_ZEROCONF
+ #include "network/Zeroconf.h"
+ #endif // HAS_ZEROCONF
+@@ -152,17 +150,13 @@ const char *eventStrings[] = {"playing", "paused", "loading", "stopped"};
+ #define AUTH_REALM "AirPlay"
+ #define AUTH_REQUIRED "WWW-Authenticate: Digest realm=\""  AUTH_REALM  "\", nonce=\"%s\"\r\n"
+ 
+-void CAirPlayServer::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                              const std::string& sender,
+-                              const std::string& message,
+-                              const CVariant& data)
++void CAirPlayServer::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+ {
+   CSingleLock lock(ServerInstanceLock);
+ 
+-  if ((flag & ANNOUNCEMENT::Player) &&
+-      sender == ANNOUNCEMENT::CAnnouncementManager::ANNOUNCEMENT_SENDER && ServerInstance)
++  if ( (flag & ANNOUNCEMENT::Player) && strcmp(sender, "xbmc") == 0 && ServerInstance)
+   {
+-    if (message == "OnStop")
++    if (strcmp(message, "OnStop") == 0)
+     {
+       bool shouldRestoreVolume = true;
+       if (data.isMember("player") && data["player"].isMember("playerid"))
+@@ -173,11 +167,11 @@ void CAirPlayServer::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+ 
+       ServerInstance->AnnounceToClients(EVENT_STOPPED);
+     }
+-    else if (message == "OnPlay" || message == "OnResume")
++    else if (strcmp(message, "OnPlay") == 0 || strcmp(message, "OnResume") == 0)
+     {
+       ServerInstance->AnnounceToClients(EVENT_PLAYING);
+     }
+-    else if (message == "OnPause")
++    else if (strcmp(message, "OnPause") == 0)
+     {
+       ServerInstance->AnnounceToClients(EVENT_PAUSED);
+     }
+diff --git a/xbmc/network/AirPlayServer.h b/xbmc/network/AirPlayServer.h
+index 986616b221..e61eec580b 100644
+--- a/xbmc/network/AirPlayServer.h
++++ b/xbmc/network/AirPlayServer.h
+@@ -30,10 +30,7 @@ class CAirPlayServer : public CThread, public ANNOUNCEMENT::IAnnouncer
+ {
+ public:
+   // IAnnouncer IF
+-  void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                const std::string& sender,
+-                const std::string& message,
+-                const CVariant& data) override;
++  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+ 
+   //AirPlayServer impl.
+   static bool StartServer(int port, bool nonlocal);
+diff --git a/xbmc/network/AirTunesServer.cpp b/xbmc/network/AirTunesServer.cpp
+index b4be1543c1..1b768ccedf 100644
+--- a/xbmc/network/AirTunesServer.cpp
++++ b/xbmc/network/AirTunesServer.cpp
+@@ -11,37 +11,35 @@
+ 
+ #include "AirTunesServer.h"
+ 
++#include <map>
++#include <string>
++#include <utility>
++
+ #include "Application.h"
+-#include "CompileInfo.h"
+-#include "FileItem.h"
+-#include "GUIInfoManager.h"
+ #include "ServiceBroker.h"
+-#include "URL.h"
+ #include "cores/VideoPlayer/DVDDemuxers/DVDDemuxBXA.h"
++#include "FileItem.h"
+ #include "filesystem/File.h"
+ #include "filesystem/PipeFile.h"
++#include "GUIInfoManager.h"
+ #include "guilib/GUIComponent.h"
+ #include "guilib/GUIWindowManager.h"
+ #include "input/Key.h"
+ #include "interfaces/AnnouncementManager.h"
+ #include "messaging/ApplicationMessenger.h"
+ #include "music/tags/MusicInfoTag.h"
++#include "network/dacp/dacp.h"
+ #include "network/Network.h"
+ #include "network/Zeroconf.h"
+ #include "network/ZeroconfBrowser.h"
+-#include "network/dacp/dacp.h"
+-#include "settings/AdvancedSettings.h"
+ #include "settings/Settings.h"
+ #include "settings/SettingsComponent.h"
++#include "URL.h"
+ #include "utils/EndianSwap.h"
++#include "utils/log.h"
+ #include "utils/StringUtils.h"
+ #include "utils/SystemInfo.h"
+ #include "utils/Variant.h"
+-#include "utils/log.h"
+-
+-#include <map>
+-#include <string>
+-#include <utility>
+ 
+ #if !defined(TARGET_WINDOWS)
+ #pragma GCC diagnostic ignored "-Wwrite-strings"
+@@ -163,15 +161,11 @@ void CAirTunesServer::SetMetadataFromBuffer(const char *buffer, unsigned int siz
+   RefreshMetadata();
+ }
+ 
+-void CAirTunesServer::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                               const std::string& sender,
+-                               const std::string& message,
+-                               const CVariant& data)
++void CAirTunesServer::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+ {
+-  if ((flag & ANNOUNCEMENT::Player) &&
+-      sender == ANNOUNCEMENT::CAnnouncementManager::ANNOUNCEMENT_SENDER)
++  if ( (flag & ANNOUNCEMENT::Player) && strcmp(sender, "xbmc") == 0)
+   {
+-    if ((message == "OnPlay" || message == "OnResume") && m_streamStarted)
++    if ((strcmp(message, "OnPlay") == 0 || strcmp(message, "OnResume") == 0) && m_streamStarted)
+     {
+       RefreshMetadata();
+       RefreshCoverArt();
+@@ -180,14 +174,14 @@ void CAirTunesServer::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+         m_pDACP->Play();
+     }
+ 
+-    if (message == "OnStop" && m_streamStarted)
++    if (strcmp(message, "OnStop") == 0 && m_streamStarted)
+     {
+       CSingleLock lock(m_dacpLock);
+       if (m_pDACP)
+         m_pDACP->Stop();
+     }
+ 
+-    if (message == "OnPause" && m_streamStarted)
++    if (strcmp(message, "OnPause") == 0 && m_streamStarted)
+     {
+       CSingleLock lock(m_dacpLock);
+       if (m_pDACP)
+diff --git a/xbmc/network/AirTunesServer.h b/xbmc/network/AirTunesServer.h
+index a739ca7ce0..4335324107 100644
+--- a/xbmc/network/AirTunesServer.h
++++ b/xbmc/network/AirTunesServer.h
+@@ -34,10 +34,7 @@ class CAirTunesServer : public ANNOUNCEMENT::IAnnouncer, public IActionListener,
+ {
+ public:
+   // ANNOUNCEMENT::IAnnouncer
+-  void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                const std::string& sender,
+-                const std::string& message,
+-                const CVariant& data) override;
++  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+ 
+   void RegisterActionListener(bool doRegister);
+   static void EnableActionProcessing(bool enable);
+diff --git a/xbmc/network/TCPServer.cpp b/xbmc/network/TCPServer.cpp
+index 2a40b15a9f..4885670eb6 100644
+--- a/xbmc/network/TCPServer.cpp
++++ b/xbmc/network/TCPServer.cpp
+@@ -222,10 +222,7 @@ int CTCPServer::GetCapabilities()
+   return Response | Announcing;
+ }
+ 
+-void CTCPServer::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                          const std::string& sender,
+-                          const std::string& message,
+-                          const CVariant& data)
++void CTCPServer::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+ {
+   std::string str = IJSONRPCAnnouncer::AnnouncementToJSONRPC(flag, sender, message, data, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_jsonOutputCompact);
+ 
+diff --git a/xbmc/network/TCPServer.h b/xbmc/network/TCPServer.h
+index 50a3a53cdb..3752441cef 100644
+--- a/xbmc/network/TCPServer.h
++++ b/xbmc/network/TCPServer.h
+@@ -36,11 +36,7 @@ namespace JSONRPC
+     bool Download(const char *path, CVariant &result) override;
+     int GetCapabilities() override;
+ 
+-    void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                  const std::string& sender,
+-                  const std::string& message,
+-                  const CVariant& data) override;
+-
++    void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+   protected:
+     void Process() override;
+   private:
+diff --git a/xbmc/network/upnp/UPnPRenderer.cpp b/xbmc/network/upnp/UPnPRenderer.cpp
+index 2997d75cef..ea85ef2848 100644
+--- a/xbmc/network/upnp/UPnPRenderer.cpp
++++ b/xbmc/network/upnp/UPnPRenderer.cpp
+@@ -31,7 +31,6 @@
+ #include "utils/StringUtils.h"
+ #include "utils/URIUtils.h"
+ #include "utils/Variant.h"
+-#include "xbmc/interfaces/AnnouncementManager.h"
+ 
+ #include <inttypes.h>
+ 
+@@ -230,69 +229,58 @@ CUPnPRenderer::ProcessHttpGetRequest(NPT_HttpRequest&              request,
+ /*----------------------------------------------------------------------
+ |   CUPnPRenderer::Announce
+ +---------------------------------------------------------------------*/
+-void CUPnPRenderer::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                             const std::string& sender,
+-                             const std::string& message,
+-                             const CVariant& data)
++void
++CUPnPRenderer::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+ {
+-  if (sender != ANNOUNCEMENT::CAnnouncementManager::ANNOUNCEMENT_SENDER)
+-    return;
++    if (strcmp(sender, "xbmc") != 0)
++      return;
+ 
+-  NPT_AutoLock lock(m_state);
+-  PLT_Service *avt, *rct;
++    NPT_AutoLock lock(m_state);
++    PLT_Service *avt, *rct;
++
++    if (flag == ANNOUNCEMENT::Player) {
++        if (NPT_FAILED(FindServiceByType("urn:schemas-upnp-org:service:AVTransport:1", avt)))
++            return;
++        if (strcmp(message, "OnPlay") == 0 || strcmp(message, "OnResume") == 0 ) {
++            avt->SetStateVariable("AVTransportURI", g_application.CurrentFile().c_str());
++            avt->SetStateVariable("CurrentTrackURI", g_application.CurrentFile().c_str());
++
++            NPT_String meta;
++            if (NPT_SUCCEEDED(GetMetadata(meta))) {
++                avt->SetStateVariable("CurrentTrackMetadata", meta);
++                avt->SetStateVariable("AVTransportURIMetaData", meta);
++            }
+ 
+-  if (flag == ANNOUNCEMENT::Player)
+-  {
+-    if (NPT_FAILED(FindServiceByType("urn:schemas-upnp-org:service:AVTransport:1", avt)))
+-      return;
++            avt->SetStateVariable("TransportPlaySpeed", NPT_String::FromInteger(data["player"]["speed"].asInteger()));
++            avt->SetStateVariable("TransportState", "PLAYING");
+ 
+-    if (message == "OnPlay" || message == "OnResume")
+-    {
+-      avt->SetStateVariable("AVTransportURI", g_application.CurrentFile().c_str());
+-      avt->SetStateVariable("CurrentTrackURI", g_application.CurrentFile().c_str());
+-
+-      NPT_String meta;
+-      if (NPT_SUCCEEDED(GetMetadata(meta)))
+-      {
+-        avt->SetStateVariable("CurrentTrackMetadata", meta);
+-        avt->SetStateVariable("AVTransportURIMetaData", meta);
+-      }
+-
+-      avt->SetStateVariable("TransportPlaySpeed",
+-                            NPT_String::FromInteger(data["player"]["speed"].asInteger()));
+-      avt->SetStateVariable("TransportState", "PLAYING");
+-
+-      /* this could be a transition to next track, so clear next */
+-      avt->SetStateVariable("NextAVTransportURI", "");
+-      avt->SetStateVariable("NextAVTransportURIMetaData", "");
+-    }
+-    else if (message == "OnPause")
+-    {
+-      int64_t speed = data["player"]["speed"].asInteger();
+-      avt->SetStateVariable("TransportPlaySpeed", NPT_String::FromInteger(speed != 0 ? speed : 1));
+-      avt->SetStateVariable("TransportState", "PAUSED_PLAYBACK");
+-    }
+-    else if (message == "OnSpeedChanged")
+-    {
+-      avt->SetStateVariable("TransportPlaySpeed",
+-                            NPT_String::FromInteger(data["player"]["speed"].asInteger()));
++            /* this could be a transition to next track, so clear next */
++            avt->SetStateVariable("NextAVTransportURI", "");
++            avt->SetStateVariable("NextAVTransportURIMetaData", "");
++        }
++        else if (strcmp(message, "OnPause") == 0) {
++            int64_t speed = data["player"]["speed"].asInteger();
++            avt->SetStateVariable("TransportPlaySpeed", NPT_String::FromInteger(speed != 0 ? speed : 1));
++            avt->SetStateVariable("TransportState", "PAUSED_PLAYBACK");
++        }
++        else if (strcmp(message, "OnSpeedChanged") == 0) {
++            avt->SetStateVariable("TransportPlaySpeed", NPT_String::FromInteger(data["player"]["speed"].asInteger()));
++        }
+     }
+-  }
+-  else if (flag == ANNOUNCEMENT::Application && message == "OnVolumeChanged")
+-  {
+-    if (NPT_FAILED(FindServiceByType("urn:schemas-upnp-org:service:RenderingControl:1", rct)))
+-      return;
++    else if (flag == ANNOUNCEMENT::Application && strcmp(message, "OnVolumeChanged") == 0) {
++        if (NPT_FAILED(FindServiceByType("urn:schemas-upnp-org:service:RenderingControl:1", rct)))
++            return;
+ 
+-    std::string buffer;
++        std::string buffer;
+ 
+-    buffer = StringUtils::Format("%" PRId64, data["volume"].asInteger());
+-    rct->SetStateVariable("Volume", buffer.c_str());
++        buffer = StringUtils::Format("%" PRId64, data["volume"].asInteger());
++        rct->SetStateVariable("Volume", buffer.c_str());
+ 
+-    buffer = StringUtils::Format("%" PRId64, 256 * (data["volume"].asInteger() * 60 - 60) / 100);
+-    rct->SetStateVariable("VolumeDb", buffer.c_str());
++        buffer = StringUtils::Format("%" PRId64, 256 * (data["volume"].asInteger() * 60 - 60) / 100);
++        rct->SetStateVariable("VolumeDb", buffer.c_str());
+ 
+-    rct->SetStateVariable("Mute", data["muted"].asBoolean() ? "1" : "0");
+-  }
++        rct->SetStateVariable("Mute", data["muted"].asBoolean() ? "1" : "0");
++    }
+ }
+ 
+ /*----------------------------------------------------------------------
+diff --git a/xbmc/network/upnp/UPnPRenderer.h b/xbmc/network/upnp/UPnPRenderer.h
+index e2ebe4b441..608423f52e 100644
+--- a/xbmc/network/upnp/UPnPRenderer.h
++++ b/xbmc/network/upnp/UPnPRenderer.h
+@@ -34,10 +34,7 @@ public:
+ 
+     ~CUPnPRenderer() override;
+ 
+-    void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                  const std::string& sender,
+-                  const std::string& message,
+-                  const CVariant& data) override;
++    void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+     void UpdateState();
+ 
+     // Http server handler
+diff --git a/xbmc/network/upnp/UPnPServer.cpp b/xbmc/network/upnp/UPnPServer.cpp
+index a593f54807..e7f6890ffa 100644
+--- a/xbmc/network/upnp/UPnPServer.cpp
++++ b/xbmc/network/upnp/UPnPServer.cpp
+@@ -39,7 +39,6 @@
+ #include "video/VideoDatabase.h"
+ #include "video/VideoThumbLoader.h"
+ #include "view/GUIViewState.h"
+-#include "xbmc/interfaces/AnnouncementManager.h"
+ 
+ #include <Platinum/Source/Platinum/Platinum.h>
+ 
+@@ -411,30 +410,26 @@ failure:
+ /*----------------------------------------------------------------------
+ |   CUPnPServer::Announce
+ +---------------------------------------------------------------------*/
+-void CUPnPServer::Announce(AnnouncementFlag flag,
+-                           const std::string& sender,
+-                           const std::string& message,
+-                           const CVariant& data)
++void
++CUPnPServer::Announce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+ {
+     NPT_String path;
+     int item_id;
+     std::string item_type;
+ 
+-    if (sender != CAnnouncementManager::ANNOUNCEMENT_SENDER)
+-      return;
++    if (strcmp(sender, "xbmc"))
++        return;
+ 
+-    if (message != "OnUpdate" && message != "OnRemove" && message != "OnScanStarted" &&
+-        message != "OnScanFinished")
+-      return;
++    if (strcmp(message, "OnUpdate") && strcmp(message, "OnRemove")
++        && strcmp(message, "OnScanStarted") && strcmp(message, "OnScanFinished"))
++        return;
+ 
+     if (data.isNull()) {
+-      if (message == "OnScanStarted" || message == "OnCleanStarted")
+-      {
+-        m_scanning = true;
++        if (!strcmp(message, "OnScanStarted") || !strcmp(message, "OnCleanStarted")) {
++            m_scanning = true;
+         }
+-        else if (message == "OnScanFinished" || message == "OnCleanFinished")
+-        {
+-          OnScanCompleted(flag);
++        else if (!strcmp(message, "OnScanFinished") || !strcmp(message, "OnCleanFinished")) {
++            OnScanCompleted(flag);
+         }
+     }
+     else {
+@@ -1090,8 +1085,7 @@ CUPnPServer::OnUpdateObject(PLT_ActionReference&             action,
+               CVariant data;
+               data["id"] = updated.GetVideoInfoTag()->m_iDbId;
+               data["type"] = updated.GetVideoInfoTag()->m_type;
+-              CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary,
+-                                                                 "OnUpdate", data);
++              CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnUpdate", data);
+             }
+             updatelisting = true;
+         }
+diff --git a/xbmc/network/upnp/UPnPServer.h b/xbmc/network/upnp/UPnPServer.h
+index 89b3a454a4..b151801d5a 100644
+--- a/xbmc/network/upnp/UPnPServer.h
++++ b/xbmc/network/upnp/UPnPServer.h
+@@ -31,10 +31,7 @@ class CUPnPServer : public PLT_MediaConnect,
+ public:
+     CUPnPServer(const char* friendly_name, const char* uuid = NULL, int port = 0);
+     ~CUPnPServer() override;
+-    void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                  const std::string& sender,
+-                  const std::string& message,
+-                  const CVariant& data) override;
++    void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+ 
+     // PLT_MediaServer methods
+     NPT_Result OnBrowseMetadata(PLT_ActionReference&          action,
+diff --git a/xbmc/peripherals/Peripherals.cpp b/xbmc/peripherals/Peripherals.cpp
+index a37ea29ac3..d0cc7d0eae 100644
+--- a/xbmc/peripherals/Peripherals.cpp
++++ b/xbmc/peripherals/Peripherals.cpp
+@@ -8,7 +8,6 @@
+ 
+ #include "Peripherals.h"
+ 
+-#include "CompileInfo.h"
+ #include "EventScanner.h"
+ #include "addons/AddonButtonMap.h"
+ #include "addons/AddonManager.h"
+@@ -1009,14 +1008,13 @@ int CPeripherals::GetMessageMask()
+ }
+ 
+ void CPeripherals::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                            const std::string& sender,
+-                            const std::string& message,
++                            const char* sender,
++                            const char* message,
+                             const CVariant& data)
+ {
+-  if (flag == ANNOUNCEMENT::Player &&
+-      sender == ANNOUNCEMENT::CAnnouncementManager::ANNOUNCEMENT_SENDER)
++  if (flag == ANNOUNCEMENT::Player && strcmp(sender, "xbmc") == 0)
+   {
+-    if (message == "OnQuit")
++    if (strcmp(message, "OnQuit") == 0)
+     {
+       if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(
+               CSettings::SETTING_INPUT_CONTROLLERPOWEROFF))
+diff --git a/xbmc/peripherals/Peripherals.h b/xbmc/peripherals/Peripherals.h
+index 9d8ae885fc..b9fac56498 100644
+--- a/xbmc/peripherals/Peripherals.h
++++ b/xbmc/peripherals/Peripherals.h
+@@ -327,8 +327,8 @@ public:
+ 
+   // implementation of IAnnouncer
+   void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                const std::string& sender,
+-                const std::string& message,
++                const char* sender,
++                const char* message,
+                 const CVariant& data) override;
+ 
+   /*!
+diff --git a/xbmc/peripherals/devices/PeripheralCecAdapter.cpp b/xbmc/peripherals/devices/PeripheralCecAdapter.cpp
+index d1e0e237d0..c65ce2d33f 100644
+--- a/xbmc/peripherals/devices/PeripheralCecAdapter.cpp
++++ b/xbmc/peripherals/devices/PeripheralCecAdapter.cpp
+@@ -22,7 +22,6 @@
+ #include "utils/JobManager.h"
+ #include "utils/Variant.h"
+ #include "utils/log.h"
+-#include "xbmc/interfaces/AnnouncementManager.h"
+ 
+ #include <libcec/cec.h>
+ 
+@@ -30,7 +29,6 @@ using namespace KODI;
+ using namespace MESSAGING;
+ using namespace PERIPHERALS;
+ using namespace CEC;
+-using namespace ANNOUNCEMENT;
+ 
+ #define CEC_LIB_SUPPORTED_VERSION LIBCEC_VERSION_TO_UINT(4, 0, 0)
+ 
+@@ -121,20 +119,20 @@ void CPeripheralCecAdapter::ResetMembers(void)
+ }
+ 
+ void CPeripheralCecAdapter::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                                     const std::string& sender,
+-                                     const std::string& message,
++                                     const char* sender,
++                                     const char* message,
+                                      const CVariant& data)
+ {
+-  if (flag == ANNOUNCEMENT::System && sender == CAnnouncementManager::ANNOUNCEMENT_SENDER &&
+-      message == "OnQuit" && m_bIsReady)
++  if (flag == ANNOUNCEMENT::System && !strcmp(sender, "xbmc") && !strcmp(message, "OnQuit") &&
++      m_bIsReady)
+   {
+     CSingleLock lock(m_critSection);
+     m_iExitCode = static_cast<int>(data["exitcode"].asInteger(EXITCODE_QUIT));
+     CServiceBroker::GetAnnouncementManager()->RemoveAnnouncer(this);
+     StopThread(false);
+   }
+-  else if (flag == ANNOUNCEMENT::GUI && sender == CAnnouncementManager::ANNOUNCEMENT_SENDER &&
+-           message == "OnScreensaverDeactivated" && m_bIsReady)
++  else if (flag == ANNOUNCEMENT::GUI && !strcmp(sender, "xbmc") &&
++           !strcmp(message, "OnScreensaverDeactivated") && m_bIsReady)
+   {
+     bool bIgnoreDeactivate(false);
+     if (data["shuttingdown"].isBoolean())
+@@ -152,8 +150,8 @@ void CPeripheralCecAdapter::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+       ActivateSource();
+     }
+   }
+-  else if (flag == ANNOUNCEMENT::GUI && sender == CAnnouncementManager::ANNOUNCEMENT_SENDER &&
+-           message == "OnScreensaverActivated" && m_bIsReady)
++  else if (flag == ANNOUNCEMENT::GUI && !strcmp(sender, "xbmc") &&
++           !strcmp(message, "OnScreensaverActivated") && m_bIsReady)
+   {
+     // Don't put devices to standby if application is currently playing
+     if (!g_application.GetAppPlayer().IsPlaying() && m_bPowerOffScreensaver)
+@@ -163,8 +161,7 @@ void CPeripheralCecAdapter::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+         StandbyDevices();
+     }
+   }
+-  else if (flag == ANNOUNCEMENT::System && sender == CAnnouncementManager::ANNOUNCEMENT_SENDER &&
+-           message == "OnSleep")
++  else if (flag == ANNOUNCEMENT::System && !strcmp(sender, "xbmc") && !strcmp(message, "OnSleep"))
+   {
+     // this will also power off devices when we're the active source
+     {
+@@ -173,8 +170,7 @@ void CPeripheralCecAdapter::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+     }
+     StopThread();
+   }
+-  else if (flag == ANNOUNCEMENT::System && sender == CAnnouncementManager::ANNOUNCEMENT_SENDER &&
+-           message == "OnWake")
++  else if (flag == ANNOUNCEMENT::System && !strcmp(sender, "xbmc") && !strcmp(message, "OnWake"))
+   {
+     CLog::Log(LOGDEBUG, "%s - reconnecting to the CEC adapter after standby mode", __FUNCTION__);
+     if (ReopenConnection())
+@@ -189,15 +185,14 @@ void CPeripheralCecAdapter::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+         ActivateSource();
+     }
+   }
+-  else if (flag == ANNOUNCEMENT::Player && sender == CAnnouncementManager::ANNOUNCEMENT_SENDER &&
+-           message == "OnStop")
++  else if (flag == ANNOUNCEMENT::Player && !strcmp(sender, "xbmc") && !strcmp(message, "OnStop"))
+   {
+     CSingleLock lock(m_critSection);
+     m_preventActivateSourceOnPlay = CDateTime::GetCurrentDateTime();
+     m_bOnPlayReceived = false;
+   }
+-  else if (flag == ANNOUNCEMENT::Player && sender == CAnnouncementManager::ANNOUNCEMENT_SENDER &&
+-           (message == "OnPlay" || message == "OnResume"))
++  else if (flag == ANNOUNCEMENT::Player && !strcmp(sender, "xbmc") &&
++           (!strcmp(message, "OnPlay") || !strcmp(message, "OnResume")))
+   {
+     // activate the source when playback started, and the option is enabled
+     bool bActivateSource(false);
+diff --git a/xbmc/peripherals/devices/PeripheralCecAdapter.h b/xbmc/peripherals/devices/PeripheralCecAdapter.h
+index ff57305d48..94b7d543bd 100644
+--- a/xbmc/peripherals/devices/PeripheralCecAdapter.h
++++ b/xbmc/peripherals/devices/PeripheralCecAdapter.h
+@@ -89,7 +89,10 @@ public:
+                         CPeripheralBus* bus);
+   ~CPeripheralCecAdapter(void) override;
+ 
+-  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const std::string& sender, const std::string& message, const CVariant &data) override;
++  void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
++                const char* sender,
++                const char* message,
++                const CVariant& data) override;
+ 
+   // audio control
+   bool HasAudioControl(void);
+diff --git a/xbmc/pictures/GUIWindowPictures.cpp b/xbmc/pictures/GUIWindowPictures.cpp
+index d97f86caf3..5d462024d1 100644
+--- a/xbmc/pictures/GUIWindowPictures.cpp
++++ b/xbmc/pictures/GUIWindowPictures.cpp
+@@ -39,6 +39,9 @@
+ #include "utils/XTimeUtils.h"
+ #include "utils/log.h"
+ #include "view/GUIViewState.h"
++
++#define CONTROL_BTNVIEWASICONS      2
++#define CONTROL_BTNSORTBY           3
+ #define CONTROL_BTNSORTASC          4
+ #define CONTROL_LABELFILES         12
+ 
+@@ -339,8 +342,7 @@ bool CGUIWindowPictures::ShowPicture(int iItem, bool startSlideShow)
+     CVariant param;
+     param["player"]["speed"] = 1;
+     param["player"]["playerid"] = PLAYLIST_PICTURE;
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnPlay",
+-                                                       pSlideShow->GetCurrentSlide(), param);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnPlay", pSlideShow->GetCurrentSlide(), param);
+   }
+ 
+   m_slideShowStarted = true;
+diff --git a/xbmc/pictures/GUIWindowSlideShow.cpp b/xbmc/pictures/GUIWindowSlideShow.cpp
+index f9f4ed08c8..d070d46f5c 100644
+--- a/xbmc/pictures/GUIWindowSlideShow.cpp
++++ b/xbmc/pictures/GUIWindowSlideShow.cpp
+@@ -151,7 +151,7 @@ void CGUIWindowSlideShow::AnnouncePlayerPlay(const CFileItemPtr& item)
+   CVariant param;
+   param["player"]["speed"] = m_bSlideShow && !m_bPause ? 1 : 0;
+   param["player"]["playerid"] = PLAYLIST_PICTURE;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnPlay", item, param);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnPlay", item, param);
+ }
+ 
+ void CGUIWindowSlideShow::AnnouncePlayerPause(const CFileItemPtr& item)
+@@ -159,7 +159,7 @@ void CGUIWindowSlideShow::AnnouncePlayerPause(const CFileItemPtr& item)
+   CVariant param;
+   param["player"]["speed"] = 0;
+   param["player"]["playerid"] = PLAYLIST_PICTURE;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnPause", item, param);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnPause", item, param);
+ }
+ 
+ void CGUIWindowSlideShow::AnnouncePlayerStop(const CFileItemPtr& item)
+@@ -167,14 +167,14 @@ void CGUIWindowSlideShow::AnnouncePlayerStop(const CFileItemPtr& item)
+   CVariant param;
+   param["player"]["playerid"] = PLAYLIST_PICTURE;
+   param["end"] = true;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnStop", item, param);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnStop", item, param);
+ }
+ 
+ void CGUIWindowSlideShow::AnnouncePlaylistClear()
+ {
+   CVariant data;
+   data["playlistid"] = PLAYLIST_PICTURE;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Playlist, "OnClear", data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnClear", data);
+ }
+ 
+ void CGUIWindowSlideShow::AnnouncePlaylistAdd(const CFileItemPtr& item, int pos)
+@@ -182,7 +182,7 @@ void CGUIWindowSlideShow::AnnouncePlaylistAdd(const CFileItemPtr& item, int pos)
+   CVariant data;
+   data["playlistid"] = PLAYLIST_PICTURE;
+   data["position"] = pos;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Playlist, "OnAdd", item, data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnAdd", item, data);
+ }
+ 
+ void CGUIWindowSlideShow::AnnouncePropertyChanged(const std::string &strProperty, const CVariant &value)
+@@ -193,8 +193,7 @@ void CGUIWindowSlideShow::AnnouncePropertyChanged(const std::string &strProperty
+   CVariant data;
+   data["player"]["playerid"] = PLAYLIST_PICTURE;
+   data["property"][strProperty] = value;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnPropertyChanged",
+-                                                     data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnPropertyChanged", data);
+ }
+ 
+ bool CGUIWindowSlideShow::IsPlaying() const
+@@ -1252,8 +1251,7 @@ void CGUIWindowSlideShow::RunSlideShow(const std::string &strPath,
+     CVariant param;
+     param["player"]["speed"] = 0;
+     param["player"]["playerid"] = PLAYLIST_PICTURE;
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "OnPlay",
+-                                                       GetCurrentSlide(), param);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Player, "xbmc", "OnPlay", GetCurrentSlide(), param);
+   }
+ 
+   CServiceBroker::GetGUI()->GetWindowManager().ActivateWindow(WINDOW_SLIDESHOW);
+diff --git a/xbmc/platform/android/activity/XBMCApp.cpp b/xbmc/platform/android/activity/XBMCApp.cpp
+index ccccf57046..03babf75bf 100644
+--- a/xbmc/platform/android/activity/XBMCApp.cpp
++++ b/xbmc/platform/android/activity/XBMCApp.cpp
+@@ -167,37 +167,34 @@ CXBMCApp::~CXBMCApp()
+   delete m_wakeLock;
+ }
+ 
+-void CXBMCApp::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                        const std::string& sender,
+-                        const std::string& message,
+-                        const CVariant& data)
++void CXBMCApp::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+ {
+-  if (sender != CAnnouncementManager::ANNOUNCEMENT_SENDER)
++  if (strcmp(sender, "xbmc") != 0)
+     return;
+ 
+   if (flag & Input)
+   {
+-    if (message == "OnInputRequested")
++    if (strcmp(message, "OnInputRequested") == 0)
+       CAndroidKey::SetHandleSearchKeys(true);
+-    else if (message == "OnInputFinished")
++    else if (strcmp(message, "OnInputFinished") == 0)
+       CAndroidKey::SetHandleSearchKeys(false);
+   }
+   else if (flag & Player)
+   {
+-    if (message == "OnPlay" || message == "OnResume")
++    if (strcmp(message, "OnPlay") == 0 || strcmp(message, "OnResume") == 0)
+       OnPlayBackStarted();
+-    else if (message == "OnPause")
++    else if (strcmp(message, "OnPause") == 0)
+       OnPlayBackPaused();
+-    else if (message == "OnStop")
++    else if (strcmp(message, "OnStop") == 0)
+       OnPlayBackStopped();
+-    else if (message == "OnSeek")
++    else if (strcmp(message, "OnSeek") == 0)
+       UpdateSessionState();
+-    else if (message == "OnSpeedChanged")
++    else if (strcmp(message, "OnSpeedChanged") == 0)
+       UpdateSessionState();
+   }
+   else if (flag & Info)
+   {
+-    if (message == "OnChanged")
++     if (strcmp(message, "OnChanged") == 0)
+       UpdateSessionMetadata();
+   }
+ }
+diff --git a/xbmc/platform/android/activity/XBMCApp.h b/xbmc/platform/android/activity/XBMCApp.h
+index 14a22cbf77..4fe96592db 100644
+--- a/xbmc/platform/android/activity/XBMCApp.h
++++ b/xbmc/platform/android/activity/XBMCApp.h
+@@ -90,10 +90,7 @@ public:
+   static CXBMCApp* get() { return m_xbmcappinstance; }
+ 
+   // IAnnouncer IF
+-  void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                const std::string& sender,
+-                const std::string& message,
+-                const CVariant& data) override;
++  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char* sender, const char* message, const CVariant& data) override;
+ 
+   void onReceive(CJNIIntent intent) override;
+   void onNewIntent(CJNIIntent intent) override;
+diff --git a/xbmc/platform/darwin/ios-common/AnnounceReceiver.h b/xbmc/platform/darwin/ios-common/AnnounceReceiver.h
+index 14c152eb2d..908d06c991 100644
+--- a/xbmc/platform/darwin/ios-common/AnnounceReceiver.h
++++ b/xbmc/platform/darwin/ios-common/AnnounceReceiver.h
+@@ -21,8 +21,8 @@ public:
+   void DeInitialize();
+ 
+   void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                const std::string& sender,
+-                const std::string& message,
++                const char* sender,
++                const char* message,
+                 const CVariant& data) override;
+ 
+ private:
+diff --git a/xbmc/platform/darwin/ios-common/AnnounceReceiver.mm b/xbmc/platform/darwin/ios-common/AnnounceReceiver.mm
+index 6931b93423..9dd7df2c5c 100644
+--- a/xbmc/platform/darwin/ios-common/AnnounceReceiver.mm
++++ b/xbmc/platform/darwin/ios-common/AnnounceReceiver.mm
+@@ -78,8 +78,8 @@ id objectFromVariant(const CVariant& data)
+ }
+ 
+ void AnnounceBridge(ANNOUNCEMENT::AnnouncementFlag flag,
+-                    const std::string& sender,
+-                    const std::string& message,
++                    const char* sender,
++                    const char* message,
+                     const CVariant& data)
+ {
+   int item_id = -1;
+@@ -215,8 +215,8 @@ void CAnnounceReceiver::DeInitialize()
+ }
+ 
+ void CAnnounceReceiver::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                                 const std::string& sender,
+-                                 const std::string& message,
++                                 const char* sender,
++                                 const char* message,
+                                  const CVariant& data)
+ {
+   // can be called from c++, we need an auto poll here.
+diff --git a/xbmc/playlists/PlayList.cpp b/xbmc/playlists/PlayList.cpp
+index c9a31c6f31..45e66b47a4 100644
+--- a/xbmc/playlists/PlayList.cpp
++++ b/xbmc/playlists/PlayList.cpp
+@@ -49,7 +49,7 @@ void CPlayList::AnnounceRemove(int pos)
+   CVariant data;
+   data["playlistid"] = m_id;
+   data["position"] = pos;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Playlist, "OnRemove", data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnRemove", data);
+ }
+ 
+ void CPlayList::AnnounceClear()
+@@ -59,7 +59,7 @@ void CPlayList::AnnounceClear()
+ 
+   CVariant data;
+   data["playlistid"] = m_id;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Playlist, "OnClear", data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnClear", data);
+ }
+ 
+ void CPlayList::AnnounceAdd(const CFileItemPtr& item, int pos)
+@@ -70,7 +70,7 @@ void CPlayList::AnnounceAdd(const CFileItemPtr& item, int pos)
+   CVariant data;
+   data["playlistid"] = m_id;
+   data["position"] = pos;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Playlist, "OnAdd", item, data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnAdd", item, data);
+ }
+ 
+ void CPlayList::Add(const CFileItemPtr &item, int iPosition, int iOrder)
+diff --git a/xbmc/powermanagement/PowerManager.cpp b/xbmc/powermanagement/PowerManager.cpp
+index ac19c48539..302c36397a 100644
+--- a/xbmc/powermanagement/PowerManager.cpp
++++ b/xbmc/powermanagement/PowerManager.cpp
+@@ -124,7 +124,7 @@ bool CPowerManager::Reboot()
+ 
+   if (success)
+   {
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::System, "OnRestart");
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::System, "xbmc", "OnRestart");
+ 
+     CGUIDialogBusy* dialog = CServiceBroker::GetGUI()->GetWindowManager().GetWindow<CGUIDialogBusy>(WINDOW_DIALOG_BUSY);
+     if (dialog)
+@@ -169,7 +169,7 @@ void CPowerManager::ProcessEvents()
+ 
+ void CPowerManager::OnSleep()
+ {
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::System, "OnSleep");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::System, "xbmc", "OnSleep");
+ 
+   CGUIDialogBusy* dialog = CServiceBroker::GetGUI()->GetWindowManager().GetWindow<CGUIDialogBusy>(WINDOW_DIALOG_BUSY);
+   if (dialog)
+@@ -216,7 +216,7 @@ void CPowerManager::OnWake()
+   CServiceBroker::GetPVRManager().OnWake();
+   RestorePlayerState();
+ 
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::System, "OnWake");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::System, "xbmc", "OnWake");
+ }
+ 
+ void CPowerManager::OnLowBattery()
+@@ -225,7 +225,7 @@ void CPowerManager::OnLowBattery()
+ 
+   CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Warning, g_localizeStrings.Get(13050), "");
+ 
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::System, "OnLowBattery");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::System, "xbmc", "OnLowBattery");
+ }
+ 
+ void CPowerManager::StorePlayerState()
+diff --git a/xbmc/pvr/PVRManager.cpp b/xbmc/pvr/PVRManager.cpp
+index a60049786a..cea94b5672 100644
+--- a/xbmc/pvr/PVRManager.cpp
++++ b/xbmc/pvr/PVRManager.cpp
+@@ -203,19 +203,16 @@ CPVRManager::~CPVRManager()
+   CLog::LogFC(LOGDEBUG, LOGPVR, "PVR Manager instance destroyed");
+ }
+ 
+-void CPVRManager::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                           const std::string& sender,
+-                           const std::string& message,
+-                           const CVariant& data)
++void CPVRManager::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char* sender, const char* message, const CVariant& data)
+ {
+   if (!IsStarted())
+     return;
+ 
+   if ((flag & (ANNOUNCEMENT::GUI)))
+   {
+-    if (message == "OnScreensaverActivated")
++    if (strcmp(message, "OnScreensaverActivated") == 0)
+       m_addons->OnPowerSavingActivated();
+-    else if (message == "OnScreensaverDeactivated")
++    else if (strcmp(message, "OnScreensaverDeactivated") == 0)
+       m_addons->OnPowerSavingDeactivated();
+   }
+ }
+diff --git a/xbmc/pvr/PVRManager.h b/xbmc/pvr/PVRManager.h
+index 7356c4cdf3..46d3fc3fbf 100644
+--- a/xbmc/pvr/PVRManager.h
++++ b/xbmc/pvr/PVRManager.h
+@@ -97,10 +97,7 @@ namespace PVR
+      */
+     ~CPVRManager() override;
+ 
+-    void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                  const std::string& sender,
+-                  const std::string& message,
+-                  const CVariant& data) override;
++    void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char* sender, const char* message, const CVariant& data) override;
+ 
+     /*!
+      * @brief Get the channel groups container.
+diff --git a/xbmc/settings/MediaSettings.cpp b/xbmc/settings/MediaSettings.cpp
+index d842376a8f..42059f6667 100644
+--- a/xbmc/settings/MediaSettings.cpp
++++ b/xbmc/settings/MediaSettings.cpp
+@@ -349,7 +349,7 @@ void CMediaSettings::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+     return;
+ 
+   if (setting->GetId() == CSettings::SETTING_VIDEOLIBRARY_SHOWUNWATCHEDPLOTS)
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "OnRefresh");
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnRefresh");
+ }
+ 
+ int CMediaSettings::GetWatchedMode(const std::string &content) const
+diff --git a/xbmc/utils/SaveFileStateJob.cpp b/xbmc/utils/SaveFileStateJob.cpp
+index e4eeb98ee3..26b7b5c317 100644
+--- a/xbmc/utils/SaveFileStateJob.cpp
++++ b/xbmc/utils/SaveFileStateJob.cpp
+@@ -104,8 +104,7 @@ void CSaveFileState::DoWork(CFileItem& item,
+                 CVariant data;
+                 data["id"] = item.GetVideoInfoTag()->m_iDbId;
+                 data["type"] = item.GetVideoInfoTag()->m_type;
+-                CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary,
+-                                                                   "OnUpdate", data);
++                CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnUpdate", data);
+               }
+             }
+           }
+@@ -129,8 +128,7 @@ void CSaveFileState::DoWork(CFileItem& item,
+               CVariant data;
+               data["id"] = item.GetVideoInfoTag()->m_iDbId;
+               data["type"] = item.GetVideoInfoTag()->m_type;
+-              CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary,
+-                                                                 "OnUpdate", data);
++              CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnUpdate", data);
+             }
+ 
+             updateListing = true;
+@@ -197,8 +195,7 @@ void CSaveFileState::DoWork(CFileItem& item,
+             CVariant data;
+             data["id"] = item.GetMusicInfoTag()->GetDatabaseId();
+             data["type"] = item.GetMusicInfoTag()->GetType();
+-            CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary,
+-                                                               "OnUpdate", data);
++            CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnUpdate", data);
+           }
+         }
+       }
+diff --git a/xbmc/video/VideoDatabase.cpp b/xbmc/video/VideoDatabase.cpp
+index 8b11158f25..41e25b08c7 100644
+--- a/xbmc/video/VideoDatabase.cpp
++++ b/xbmc/video/VideoDatabase.cpp
+@@ -5919,8 +5919,7 @@ void CVideoDatabase::SetPlayCount(const CFileItem &item, int count, const CDateT
+       // Only provide the "playcount" value if it has actually changed
+       if (item.GetVideoInfoTag()->GetPlayCount() != count)
+         data["playcount"] = count;
+-      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "OnUpdate",
+-                                                         CFileItemPtr(new CFileItem(item)), data);
++      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnUpdate", CFileItemPtr(new CFileItem(item)), data);
+     }
+   }
+   catch (...)
+@@ -8973,8 +8972,7 @@ void CVideoDatabase::CleanDatabase(CGUIDialogProgressBarHandle* handle, const st
+ 
+     unsigned int time = XbmcThreads::SystemClockMillis();
+     CLog::Log(LOGINFO, "%s: Starting videodatabase cleanup ..", __FUNCTION__);
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary,
+-                                                       "OnCleanStarted");
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnCleanStarted");
+ 
+     BeginTransaction();
+ 
+@@ -9085,8 +9083,7 @@ void CVideoDatabase::CleanDatabase(CGUIDialogProgressBarHandle* handle, const st
+         {
+           progress->Close();
+           m_pDS2->close();
+-          CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary,
+-                                                             "OnCleanFinished");
++          CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnCleanFinished");
+           return;
+         }
+       }
+@@ -9328,7 +9325,7 @@ void CVideoDatabase::CleanDatabase(CGUIDialogProgressBarHandle* handle, const st
+   if (progress)
+     progress->Close();
+ 
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "OnCleanFinished");
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnCleanFinished");
+ }
+ 
+ std::vector<int> CVideoDatabase::CleanMediaType(const std::string &mediaType, const std::string &cleanableFileIDs,
+@@ -10047,8 +10044,7 @@ void CVideoDatabase::ExportToXML(const std::string &path, bool singleFile /* = t
+       if (iFailCount > 0)
+         data["failcount"] = iFailCount;
+     }
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "OnExport",
+-                                                       data);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnExport", data);
+   }
+   catch (...)
+   {
+@@ -10459,7 +10455,7 @@ void CVideoDatabase::AnnounceRemove(std::string content, int id, bool scanning /
+   data["id"] = id;
+   if (scanning)
+     data["transaction"] = true;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "OnRemove", data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnRemove", data);
+ }
+ 
+ void CVideoDatabase::AnnounceUpdate(std::string content, int id)
+@@ -10467,7 +10463,7 @@ void CVideoDatabase::AnnounceUpdate(std::string content, int id)
+   CVariant data;
+   data["type"] = content;
+   data["id"] = id;
+-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "OnUpdate", data);
++  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnUpdate", data);
+ }
+ 
+ bool CVideoDatabase::GetItemsForPath(const std::string &content, const std::string &strPath, CFileItemList &items)
+diff --git a/xbmc/video/VideoInfoScanner.cpp b/xbmc/video/VideoInfoScanner.cpp
+index a5f9827328..574155a61b 100644
+--- a/xbmc/video/VideoInfoScanner.cpp
++++ b/xbmc/video/VideoInfoScanner.cpp
+@@ -105,8 +105,7 @@ namespace VIDEO
+       m_bCanInterrupt = true;
+ 
+       CLog::Log(LOGINFO, "VideoInfoScanner: Starting scan ..");
+-      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary,
+-                                                         "OnScanStarted");
++      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnScanStarted");
+ 
+       // Database operations should not be canceled
+       // using Interrupt() while scanning as it could
+@@ -166,8 +165,7 @@ namespace VIDEO
+     }
+ 
+     m_bRunning = false;
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary,
+-                                                       "OnScanFinished");
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnScanFinished");
+ 
+     if (m_handle)
+       m_handle->MarkFinished();
+@@ -1409,8 +1407,7 @@ namespace VIDEO
+     data["added"] = true;
+     if (m_bRunning)
+       data["transaction"] = true;
+-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "OnUpdate",
+-                                                       itemCopy, data);
++    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnUpdate", itemCopy, data);
+     return lResult;
+   }
+ 
+diff --git a/xbmc/windowing/win10/WinEventsWin10.cpp b/xbmc/windowing/win10/WinEventsWin10.cpp
+index 13bd5d54b6..c436701a17 100644
+--- a/xbmc/windowing/win10/WinEventsWin10.cpp
++++ b/xbmc/windowing/win10/WinEventsWin10.cpp
+@@ -599,10 +599,7 @@ void CWinEventsWin10::OnSystemMediaButtonPressed(const SystemMediaTransportContr
+   }
+ }
+ 
+-void CWinEventsWin10::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                               const std::string& sender,
+-                               const std::string& message,
+-                               const CVariant& data)
++void CWinEventsWin10::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char * sender, const char * message, const CVariant & data)
+ {
+   if (flag & ANNOUNCEMENT::Player)
+   {
+@@ -613,22 +610,22 @@ void CWinEventsWin10::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+     bool changed = false;
+     MediaPlaybackStatus status = MediaPlaybackStatus::Changing;
+ 
+-    if (message == "OnPlay" || message == "OnResume")
++    if (strcmp(message, "OnPlay") == 0 || strcmp(message, "OnResume") == 0)
+     {
+       changed = true;
+       status = MediaPlaybackStatus::Playing;
+     }
+-    else if (message == "OnStop")
++    else if (strcmp(message, "OnStop") == 0)
+     {
+       changed = true;
+       status = MediaPlaybackStatus::Stopped;
+     }
+-    else if (message == "OnPause")
++    else if (strcmp(message, "OnPause") == 0)
+     {
+       changed = true;
+       status = MediaPlaybackStatus::Paused;
+     }
+-    else if (message == "OnSpeedChanged")
++    else if (strcmp(message, "OnSpeedChanged") == 0)
+     {
+       changed = true;
+       status = speed != 0.0 ? MediaPlaybackStatus::Playing : MediaPlaybackStatus::Paused;
+diff --git a/xbmc/windowing/win10/WinEventsWin10.h b/xbmc/windowing/win10/WinEventsWin10.h
+index c4bd3458df..37fe9055cf 100644
+--- a/xbmc/windowing/win10/WinEventsWin10.h
++++ b/xbmc/windowing/win10/WinEventsWin10.h
+@@ -57,10 +57,7 @@ public:
+   static void OnSystemMediaButtonPressed(const winrt::Windows::Media::SystemMediaTransportControls&
+                                        , const winrt::Windows::Media::SystemMediaTransportControlsButtonPressedEventArgs&);
+   // IAnnouncer overrides
+-  void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                const std::string& sender,
+-                const std::string& message,
+-                const CVariant& data) override;
++  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+ 
+ private:
+   friend class CWinSystemWin10;
+diff --git a/xbmc/windows/GUIWindowHome.cpp b/xbmc/windows/GUIWindowHome.cpp
+index b45ec763af..c1ad2adb2a 100644
+--- a/xbmc/windows/GUIWindowHome.cpp
++++ b/xbmc/windows/GUIWindowHome.cpp
+@@ -61,10 +61,7 @@ void CGUIWindowHome::OnInitWindow()
+   CGUIWindow::OnInitWindow();
+ }
+ 
+-void CGUIWindowHome::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                              const std::string& sender,
+-                              const std::string& message,
+-                              const CVariant& data)
++void CGUIWindowHome::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+ {
+   int ra_flag = 0;
+ 
+@@ -77,10 +74,11 @@ void CGUIWindowHome::Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+   if (data.isMember("transaction") && data["transaction"].asBoolean())
+     return;
+ 
+-  if (message == "OnScanStarted" || message == "OnCleanStarted")
++  if (strcmp(message, "OnScanStarted") == 0 ||
++      strcmp(message, "OnCleanStarted") == 0)
+     return;
+ 
+-  bool onUpdate = message == "OnUpdate";
++  bool onUpdate = strcmp(message, "OnUpdate") == 0;
+   // always update Totals except on an OnUpdate with no playcount update
+   if (!onUpdate || data.isMember("playcount"))
+     ra_flag |= Totals;
+diff --git a/xbmc/windows/GUIWindowHome.h b/xbmc/windows/GUIWindowHome.h
+index 08e0066bb4..26d2ba5006 100644
+--- a/xbmc/windows/GUIWindowHome.h
++++ b/xbmc/windows/GUIWindowHome.h
+@@ -23,10 +23,7 @@ public:
+   CGUIWindowHome(void);
+   ~CGUIWindowHome(void) override;
+   void OnInitWindow() override;
+-  void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
+-                const std::string& sender,
+-                const std::string& message,
+-                const CVariant& data) override;
++  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+ 
+   bool OnMessage(CGUIMessage& message) override;
+   bool OnAction(const CAction &action) override;
+-- 
+2.26.2
+
