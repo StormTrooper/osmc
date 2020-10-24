@@ -493,7 +493,7 @@ index 4e012d9b22..8564c8fb72 100644
 --- a/tools/depends/native/Makefile
 +++ b/tools/depends/native/Makefile
 @@ -18,6 +18,12 @@ ifeq ($(OS),darwin_embedded)
-   NATIVE += dpkg xz tar gen_entitlements ldid
+   NATIVE += dpkg xz tar ldid
  endif
 
 +ifeq ($(OS),linux)
@@ -502,8 +502,8 @@ index 4e012d9b22..8564c8fb72 100644
 +   endif
 +endif
 +
- ifeq ($(TARGET_PLATFORM),wayland)
-   NATIVE += expat wayland-scanner waylandpp-scanner
+ ifeq ($(OS),linux)
+   NATIVE += expat wayland-scanner pugixml waylandpp-scanner
    EXPAT = expat
 diff --git a/tools/depends/native/Makefile b/tools/depends/native/Makefile
 index 4e012d9b22..8564c8fb72 100644
