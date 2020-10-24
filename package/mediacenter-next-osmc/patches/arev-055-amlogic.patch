@@ -20,7 +20,6 @@ This reverts commit 750b8c4b2408938ff0d0b26e732de4e6c8c692b0.
  tools/buildsteps/linux-aml/package                 |    5 +
  tools/buildsteps/linux-aml/prepare-depends         |   15 +
  tools/buildsteps/linux-aml/prepare-xbmc            |    9 +
- tools/depends/configure.ac                         |    7 +-
  tools/depends/native/Makefile                      |    2 +-
  tools/depends/target/Makefile                      |    4 +-
  tools/depends/target/libamcodec/01-flags.patch     |   22 +
@@ -489,27 +488,6 @@ index 0000000000..4ffc93bf6d
 +#here (e.x. on release builds where pathChanged always returns 1
 +BINARY_ADDONS_CLEAN_NATIVETOOLS="0"
 +. $WORKSPACE/tools/buildsteps/$XBMC_PLATFORM_DIR/make-binary-addons
-diff --git a/tools/depends/configure.ac b/tools/depends/configure.ac
-index 66f7e96ace..a41158b4b7 100644
---- a/tools/depends/configure.ac
-+++ b/tools/depends/configure.ac
-@@ -391,10 +391,15 @@ case $host in
- esac
- 
- case $use_platform in
--  gbm|wayland)
-+  aml|gbm|wayland)
-     if test "$platform_os" != "linux"; then
-       AC_MSG_ERROR([$use_platform is only supported on the Linux platform])
-     fi
-+    if test "$use_platform" = "aml"; then
-+      if test "$host_cpu" != "arm" && test "$host_cpu" != "aarch64"; then
-+        AC_MSG_ERROR([$use_platform is only supported for arm and aarch64 architecture])
-+      fi
-+    fi
-     target_platform=$use_platform
-     ;;
-   raspberry-pi)
 diff --git a/tools/depends/native/Makefile b/tools/depends/native/Makefile
 index 4e012d9b22..8564c8fb72 100644
 --- a/tools/depends/native/Makefile
