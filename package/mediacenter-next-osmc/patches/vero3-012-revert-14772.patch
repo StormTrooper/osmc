@@ -9,33 +9,31 @@ Subject: [PATCH] Revert #14772
  xbmc/utils/GLUtils.h    |  13 -----
  3 files changed, 29 insertions(+), 230 deletions(-)
 
-diff --git a/xbmc/utils/EGLUtils.cpp b/xbmc/utils/EGLUtils.cpp
-index 25d93985a6..854878dbd8 100644
+iff --git a/xbmc/utils/EGLUtils.cpp b/xbmc/utils/EGLUtils.cpp
+index 0d7c23891c..662a1e5ab4 100644
 --- a/xbmc/utils/EGLUtils.cpp
 +++ b/xbmc/utils/EGLUtils.cpp
-@@ -17,8 +17,6 @@
+@@ -15,15 +15,13 @@
  #include "settings/AdvancedSettings.h"
  #include "settings/SettingsComponent.h"
- 
+
 -#include <map>
 -
  #include <EGL/eglext.h>
 
  namespace
-@@ -36,7 +34,7 @@ namespace
- #endif
- 
+ {
+
  #define X(VAL) std::make_pair(VAL, #VAL)
 -std::map<EGLint, const char*> eglAttributes =
 +std::array<std::pair<EGLint, const char*>, 32> eglAttributes =
  {
    // please keep attributes in accordance to:
    // https://www.khronos.org/registry/EGL/sdk/docs/man/html/eglGetConfigAttrib.xhtml
-@@ -73,64 +71,8 @@ std::map<EGLint, const char*> eglAttributes =
-   X(EGL_TRANSPARENT_GREEN_VALUE),
+@@ -61,34 +59,6 @@ std::map<EGLint, const char*> eglAttributes =
    X(EGL_TRANSPARENT_BLUE_VALUE)
  };
--
+
 -std::map<EGLenum, const char*> eglErrors =
 -{
 -  // please keep errors in accordance to:
@@ -59,45 +57,16 @@ index 25d93985a6..854878dbd8 100644
 -
 -std::map<EGLint, const char*> eglErrorType =
 -{
--//! @todo remove when Raspberry Pi updates their EGL headers
--#if !defined(TARGET_RASPBERRY_PI)
 -  X(EGL_DEBUG_MSG_CRITICAL_KHR),
 -  X(EGL_DEBUG_MSG_ERROR_KHR),
 -  X(EGL_DEBUG_MSG_WARN_KHR),
 -  X(EGL_DEBUG_MSG_INFO_KHR),
--#endif
 -};
  #undef X
--
--} // namespace
--
--//! @todo remove when Raspberry Pi updates their EGL headers
--#if !defined(TARGET_RASPBERRY_PI)
--void EglErrorCallback(EGLenum error, const char* command, EGLint messageType, EGLLabelKHR threadLabel, EGLLabelKHR objectLabel, const char* message)
--{
--  std::string errorStr;
--  std::string typeStr;
--
--  auto eglError = eglErrors.find(error);
--  if (eglError != eglErrors.end())
--  {
--    errorStr = eglError->second;
--  }
--
--  auto eglType = eglErrorType.find(messageType);
--  if (eglType != eglErrorType.end())
--  {
--    typeStr = eglType->second;
--  }
--
--  CLog::Log(LOGDEBUG, "EGL Debugging:\nError: {}\nCommand: {}\nType: {}\nMessage: {}", errorStr, command, typeStr, message);
- }
--#endif
- 
- std::set<std::string> CEGLUtils::GetClientExtensions()
- {
-@@ -170,16 +112,7 @@ bool CEGLUtils::HasClientExtension(const std::string& name)
- 
+
+ } // namespace
+@@ -156,34 +126,12 @@ bool CEGLUtils::HasClientExtension(const std::string& name)
+
  void CEGLUtils::Log(int logLevel, const std::string& what)
  {
 -  EGLenum error = eglGetError();
@@ -110,16 +79,12 @@ index 25d93985a6..854878dbd8 100644
 -  }
 -
 -  CLog::Log(logLevel, "{} ({})", what.c_str(), errorStr);
-+  CLog::Log(logLevel, "%s (EGL error %d)", what.c_str(), eglGetError());  
++  CLog::Log(LOGERROR, "%s (EGL error %d)", what.c_str(), eglGetError());  
  }
- 
- CEGLContextUtils::CEGLContextUtils()
-@@ -189,22 +122,6 @@ CEGLContextUtils::CEGLContextUtils()
+
  CEGLContextUtils::CEGLContextUtils(EGLenum platform, std::string const& platformExtension)
  : m_platform{platform}
  {
--//! @todo remove when Raspberry Pi updates their EGL headers
--#if !defined(TARGET_RASPBERRY_PI)
 -  if (CEGLUtils::HasClientExtension("EGL_KHR_debug"))
 -  {
 -    auto eglDebugMessageControl = CEGLUtils::GetRequiredProcAddress<PFNEGLDEBUGMESSAGECONTROLKHRPROC>("eglDebugMessageControlKHR");
@@ -132,27 +97,23 @@ index 25d93985a6..854878dbd8 100644
 -
 -    eglDebugMessageControl(EglErrorCallback, eglDebugAttribs);
 -  }
--#endif
 -
    m_platformSupported = CEGLUtils::HasClientExtension("EGL_EXT_platform_base") && CEGLUtils::HasClientExtension(platformExtension);
  }
- 
-@@ -404,15 +321,6 @@ bool CEGLContextUtils::CreateContext(CEGLAttributesVec contextAttribs)
+
+@@ -397,12 +345,6 @@ bool CEGLContextUtils::CreateContext(CEGLAttributesVec contextAttribs)
    if (CEGLUtils::HasExtension(m_eglDisplay, "EGL_IMG_context_priority"))
      contextAttribs.Add({{EGL_CONTEXT_PRIORITY_LEVEL_IMG, EGL_CONTEXT_PRIORITY_HIGH_IMG}});
- 
--//! @todo remove when Raspberry Pi updates their EGL headers
--#if !defined(TARGET_RASPBERRY_PI)
+
 -  if (CEGLUtils::HasExtension(m_eglDisplay, "EGL_KHR_create_context") &&
 -      CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_openGlDebugging)
 -  {
 -    contextAttribs.Add({{EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR}});
 -  }
--#endif
 -
    m_eglContext = eglCreateContext(m_eglDisplay, eglConfig,
                                    EGL_NO_CONTEXT, contextAttribs.Get());
- 
+
 diff --git a/xbmc/utils/GLUtils.cpp b/xbmc/utils/GLUtils.cpp
 index e381fd6bc9..7d88df63c3 100644
 --- a/xbmc/utils/GLUtils.cpp
