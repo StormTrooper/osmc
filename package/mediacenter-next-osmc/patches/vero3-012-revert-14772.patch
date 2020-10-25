@@ -9,7 +9,7 @@ Subject: [PATCH] Revert #14772
  xbmc/utils/GLUtils.h    |  13 -----
  3 files changed, 29 insertions(+), 230 deletions(-)
 
-iff --git a/xbmc/utils/EGLUtils.cpp b/xbmc/utils/EGLUtils.cpp
+diff --git a/xbmc/utils/EGLUtils.cpp b/xbmc/utils/EGLUtils.cpp
 index 0d7c23891c..662a1e5ab4 100644
 --- a/xbmc/utils/EGLUtils.cpp
 +++ b/xbmc/utils/EGLUtils.cpp
@@ -65,6 +65,38 @@ index 0d7c23891c..662a1e5ab4 100644
  #undef X
 
  } // namespace
+@@ -63,31 +63,6 @@ std::array<std::pair<EGLint, const char*>, 32> eglAttributes =
+
+ } // namespace
+
+-void EglErrorCallback(EGLenum error,
+-                      const char* command,
+-                      EGLint messageType,
+-                      EGLLabelKHR threadLabel,
+-                      EGLLabelKHR objectLabel,
+-                      const char* message)
+-{
+-  std::string errorStr;
+-  std::string typeStr;
+-
+-  auto eglError = eglErrors.find(error);
+-  if (eglError != eglErrors.end())
+-  {
+-    errorStr = eglError->second;
+-  }
+-
+-  auto eglType = eglErrorType.find(messageType);
+-  if (eglType != eglErrorType.end())
+-  {
+-    typeStr = eglType->second;
+-  }
+-
+-  CLog::Log(LOGDEBUG, "EGL Debugging:\nError: {}\nCommand: {}\nType: {}\nMessage: {}", errorStr, command, typeStr, message);
+-}
+-
+ std::set<std::string> CEGLUtils::GetClientExtensions()
+ {
+   const char* extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
 @@ -156,34 +126,12 @@ bool CEGLUtils::HasClientExtension(const std::string& name)
 
  void CEGLUtils::Log(int logLevel, const std::string& what)
