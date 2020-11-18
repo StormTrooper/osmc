@@ -4204,16 +4204,16 @@ index 603c50aec9..f2a68289b2 100644
  #include "profiles/ProfileManager.h"
  #include "ServiceBroker.h"
 @@ -129,6 +132,10 @@ const std::string CSettings::SETTING_VIDEOPLAYER_STEREOSCOPICPLAYBACKMODE = "vid
- const std::string CSettings::SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP = "videoplayer.quitstereomodeonstop";
- const std::string CSettings::SETTING_VIDEOPLAYER_RENDERMETHOD = "videoplayer.rendermethod";
- const std::string CSettings::SETTING_VIDEOPLAYER_HQSCALERS = "videoplayer.hqscalers";
-+const std::string CSettings::SETTING_VIDEOPLAYER_USEAMCODEC = "videoplayer.useamcodec";
-+const std::string CSettings::SETTING_VIDEOPLAYER_USEAMCODECMPEG2 = "videoplayer.useamcodecmpeg2";
-+const std::string CSettings::SETTING_VIDEOPLAYER_USEAMCODECMPEG4 = "videoplayer.useamcodecmpeg4";
-+const std::string CSettings::SETTING_VIDEOPLAYER_USEAMCODECH264 = "videoplayer.useamcodech264";
- const std::string CSettings::SETTING_VIDEOPLAYER_USEMEDIACODEC = "videoplayer.usemediacodec";
- const std::string CSettings::SETTING_VIDEOPLAYER_USEMEDIACODECSURFACE = "videoplayer.usemediacodecsurface";
- const std::string CSettings::SETTING_VIDEOPLAYER_USEVDPAU = "videoplayer.usevdpau";
+ constexpr const char* CSettings::SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP;
+ constexpr const char* CSettings::SETTING_VIDEOPLAYER_RENDERMETHOD;
+ constexpr const char* CSettings::SETTING_VIDEOPLAYER_HQSCALERS;
++constexpr const char* CSettings::SETTING_VIDEOPLAYER_USEAMCODEC;
++constexpr const char* CSettings::SETTING_VIDEOPLAYER_USEAMCODECMPEG2;
++constexpr const char* CSettings::SETTING_VIDEOPLAYER_USEAMCODECMPEG4;
++constexpr const char* CSettings::SETTING_VIDEOPLAYER_USEAMCODECH264;
+ constexpr const char* CSettings::SETTING_VIDEOPLAYER_USEMEDIACODEC;
+ constexpr const char* CSettings::SETTING_VIDEOPLAYER_USEMEDIACODECSURFACE;
+ constexpr const char* CSettings::SETTING_VIDEOPLAYER_USEVDPAU;
 @@ -529,6 +536,10 @@ bool CSettings::InitializeDefinitions()
  #elif defined(TARGET_ANDROID)
    if (CFile::Exists(SETTINGS_XML_FOLDER "android.xml") && !Initialize(SETTINGS_XML_FOLDER "android.xml"))
