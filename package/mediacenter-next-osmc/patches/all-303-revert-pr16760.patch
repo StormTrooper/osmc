@@ -514,7 +514,7 @@ index 879cbe55a1..31d2f3ae95 100644
 -void CAnnouncementManager::DoAnnounce(AnnouncementFlag flag,
 -                                      const std::string& sender,
 -                                      const std::string& message,
--                                      CFileItemPtr item,
+-                                      const CFileItemPtr& item,
 -                                      const CVariant& data)
 +void CAnnouncementManager::DoAnnounce(AnnouncementFlag flag, const char *sender, const char *message, CFileItemPtr item, const CVariant &data)
  {
