@@ -4159,8 +4159,8 @@ index bec4224f77..b5a45d03b0 100644
    list(APPEND HEADERS LIRC.h)
  endif()
  
--if(CORE_PLATFORM_NAME_LC STREQUAL gbm)
-+if(CORE_PLATFORM_NAME_LC STREQUAL gbm OR CORE_PLATFORM_NAME_LC STREQUAL aml)
+-if("gbm" IN_LIST CORE_PLATFORM_NAME_LC)
++if("gbm" IN_LIST CORE_PLATFORM_NAME_LC OR "aml" IN_LIST CORE_PLATFORM_NAME_LC)
    if(LIBINPUT_FOUND)
      list(APPEND SOURCES LibInputHandler.cpp
                          LibInputKeyboard.cpp
