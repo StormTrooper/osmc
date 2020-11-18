@@ -4248,17 +4248,17 @@ diff --git a/xbmc/settings/Settings.h b/xbmc/settings/Settings.h
 index 8ac78f569e..405ea9fec5 100644
 --- a/xbmc/settings/Settings.h
 +++ b/xbmc/settings/Settings.h
-@@ -95,6 +95,10 @@ public:
-   static const std::string SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP;
-   static const std::string SETTING_VIDEOPLAYER_RENDERMETHOD;
-   static const std::string SETTING_VIDEOPLAYER_HQSCALERS;
-+  static const std::string SETTING_VIDEOPLAYER_USEAMCODEC;
-+  static const std::string SETTING_VIDEOPLAYER_USEAMCODECMPEG2;
-+  static const std::string SETTING_VIDEOPLAYER_USEAMCODECMPEG4;
-+  static const std::string SETTING_VIDEOPLAYER_USEAMCODECH264;
-   static const std::string SETTING_VIDEOPLAYER_USEMEDIACODEC;
-   static const std::string SETTING_VIDEOPLAYER_USEMEDIACODECSURFACE;
-   static const std::string SETTING_VIDEOPLAYER_USEVDPAU;
+@@ -115,6 +115,10 @@ public:
+       "videoplayer.quitstereomodeonstop";
+   static constexpr auto SETTING_VIDEOPLAYER_RENDERMETHOD = "videoplayer.rendermethod";
+   static constexpr auto SETTING_VIDEOPLAYER_HQSCALERS = "videoplayer.hqscalers";
++  static constexpr auto SETTING_VIDEOPLAYER_USEAMCODEC = "videoplayer.useamcodec";
++  static constexpr auto SETTING_VIDEOPLAYER_USEAMCODECMPEG2 = "videoplayer.useamcodecmpeg2";
++  static constexpr auto SETTING_VIDEOPLAYER_USEAMCODECMPEG4 = "videoplayer.useamcodecmpeg4";
++  static constexpr auto SETTING_VIDEOPLAYER_USEAMCODECH264 = "videoplayer.useamcodech264";
+   static constexpr auto SETTING_VIDEOPLAYER_USEMEDIACODEC = "videoplayer.usemediacodec";
+   static constexpr auto SETTING_VIDEOPLAYER_USEMEDIACODECSURFACE =
+       "videoplayer.usemediacodecsurface";
 diff --git a/xbmc/utils/AMLUtils.cpp b/xbmc/utils/AMLUtils.cpp
 new file mode 100644
 index 0000000000..429e1bcf5f
