@@ -184,7 +184,7 @@ then
         export LDFLAGS="" && \
         cmake -DCMAKE_INSTALL_PREFIX=/usr \
             -DCMAKE_INSTALL_LIBDIR=/usr/lib \
-            -DGBM_RENDER_SYSTEM=gl \
+            -DAPP_RENDER_SYSTEM=gl \
             -DCMAKE_INCLUDE_PATH=/usr/osmc/include \
             -DCMAKE_LIBRARY_PATH=/usr/osmc/lib \
             -DENABLE_OPTICAL=1 \
@@ -219,7 +219,7 @@ then
             -DENABLE_DVDCSS=1 \
             -DCORE_SYSTEM_NAME=linux \
             -DCORE_PLATFORM_NAME=gbm \
-            -DGBM_RENDER_SYSTEM=gles \
+            -DAPP_RENDER_SYSTEM=gles \
             -DWITH_ARCH=arm \
             -DENABLE_APP_AUTONAME=OFF \
             -DENABLE_INTERNAL_FMT=ON \
@@ -253,7 +253,7 @@ then
             -DENABLE_DVDCSS=1 \
             -DCORE_SYSTEM_NAME=linux \
             -DCORE_PLATFORM_NAME=gbm \
-            -DGBM_RENDER_SYSTEM=gles \
+            -DAPP_RENDER_SYSTEM=gles \
             -DWITH_ARCH=arm \
             -DENABLE_APP_AUTONAME=OFF \
             -DENABLE_INTERNAL_FMT=ON \
