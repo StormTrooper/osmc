@@ -158,13 +158,6 @@ then
 	pushd src/xbmc-*
 
 
-	
-	#Temp hack to revert rbp patches before everything else.
-	if [ "$1" == "rbp2" ]
-	then 
-		install_patch "../../patches" "rrev"
-	fi
-	
 	if [ "$1" == "rbp2" ] || [ "$1" == "vero3" ]; then install_patch "../../patches" "arev"; fi
 
 	install_patch "../../patches" "all"
