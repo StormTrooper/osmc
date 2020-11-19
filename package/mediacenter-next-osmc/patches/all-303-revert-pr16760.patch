@@ -525,7 +525,6 @@ index 87ce3dbad9..99f262e08d 100644
 --- a/xbmc/interfaces/AnnouncementManager.h
 +++ b/xbmc/interfaces/AnnouncementManager.h
 @@ -34,43 +34,17 @@ namespace ANNOUNCEMENT
-@@ -34,43 +34,17 @@ namespace ANNOUNCEMENT
      void AddAnnouncer(IAnnouncer *listener);
      void RemoveAnnouncer(IAnnouncer *listener);
 
