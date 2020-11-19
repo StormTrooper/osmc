@@ -1457,22 +1457,6 @@ index d1e0e237d0..c65ce2d33f 100644
    {
      // activate the source when playback started, and the option is enabled
      bool bActivateSource(false);
-diff --git a/xbmc/peripherals/devices/PeripheralCecAdapter.h b/xbmc/peripherals/devices/PeripheralCecAdapter.h
-index ff57305d48..94b7d543bd 100644
---- a/xbmc/peripherals/devices/PeripheralCecAdapter.h
-+++ b/xbmc/peripherals/devices/PeripheralCecAdapter.h
-@@ -89,7 +89,10 @@ public:
-                         CPeripheralBus* bus);
-   ~CPeripheralCecAdapter(void) override;
- 
--  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const std::string& sender, const std::string& message, const CVariant &data) override;
-+  void Announce(ANNOUNCEMENT::AnnouncementFlag flag,
-+                const char* sender,
-+                const char* message,
-+                const CVariant& data) override;
- 
-   // audio control
-   bool HasAudioControl(void);
 diff --git a/xbmc/pictures/GUIWindowPictures.cpp b/xbmc/pictures/GUIWindowPictures.cpp
 index d97f86caf3..5d462024d1 100644
 --- a/xbmc/pictures/GUIWindowPictures.cpp
