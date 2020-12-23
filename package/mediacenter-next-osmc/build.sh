@@ -277,7 +277,7 @@ then
             -DOPENGLES_gl_LIBRARY=/opt/vero3/lib \
             -DGTEST_LIBRARY=/opt/vero3/lib \
             -DGTEST_INCLUDE_DIR=/opt/vero3/include \
-	    -DAPP_RENDER_SYSTEM=gles
+	    -DAPP_RENDER_SYSTEM=gles \
 	    -DENABLE_AML=ON \
             -DASS_INCLUDE_DIR=/usr/osmc/lib \
             -DAML_INCLUDE_DIR=/opt/vero3/include \
