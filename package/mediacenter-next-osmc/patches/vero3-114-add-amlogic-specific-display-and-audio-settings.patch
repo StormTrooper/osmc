@@ -186,25 +186,25 @@ index 3360e1c..0d23b8f 100644
 --- a/xbmc/settings/Settings.cpp
 +++ b/xbmc/settings/Settings.cpp
 @@ -333,6 +333,10 @@ const std::string CSettings::SETTING_VIDEOSCREEN_RESOLUTION = "videoscreen.resol
- const std::string CSettings::SETTING_VIDEOSCREEN_SCREENMODE = "videoscreen.screenmode";
- const std::string CSettings::SETTING_VIDEOSCREEN_FAKEFULLSCREEN = "videoscreen.fakefullscreen";
- const std::string CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS = "videoscreen.blankdisplays";
-+const std::string CSettings::SETTING_VIDEOSCREEN_FORCERGB = "videoscreen.forcergb";
-+const std::string CSettings::SETTING_VIDEOSCREEN_LOCKHPD = "videoscreen.lockhpd";
-+const std::string CSettings::SETTING_VIDEOSCREEN_MUTEHDMI = "videoscreen.mutehdmi";
-+const std::string CSettings::SETTING_VIDEOSCREEN_FORCE422 = "videoscreen.force422";
- const std::string CSettings::SETTING_VIDEOSCREEN_STEREOSCOPICMODE = "videoscreen.stereoscopicmode";
- const std::string CSettings::SETTING_VIDEOSCREEN_PREFEREDSTEREOSCOPICMODE = "videoscreen.preferedstereoscopicmode";
- const std::string CSettings::SETTING_VIDEOSCREEN_NOOFBUFFERS = "videoscreen.noofbuffers";
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_SCREENMODE;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_FAKEFULLSCREEN;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS;
++constexpr const char* CSettings::SETTING_VIDEOSCREEN_FORCERBG";
++constexpr const char* CSettings::SETTING_VIDEOSCREEN_LOCKHPD;
++constexpr const char* CSettings::SETTING_VIDEOSCREEN_MUTEHDMI;
++constexpr const char* CSettings::SETTING_VIDEOSCREEN_FORCE422;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_STEREOSCOPICMODE;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_PREFEREDSTEREOSCOPICMODE;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_NOOFBUFFERS;
 @@ -340,7 +344,7 @@ const std::string CSettings::SETTING_VIDEOSCREEN_3DLUT = "videoscreen.cms3dlut";
- const std::string CSettings::SETTING_VIDEOSCREEN_DISPLAYPROFILE = "videoscreen.displayprofile";
- const std::string CSettings::SETTING_VIDEOSCREEN_GUICALIBRATION = "videoscreen.guicalibration";
- const std::string CSettings::SETTING_VIDEOSCREEN_TESTPATTERN = "videoscreen.testpattern";
--const std::string CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE = "videoscreen.limitedrange";
-+const std::string CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGEAML = "videoscreen.limitedrangeaml";
- const std::string CSettings::SETTING_VIDEOSCREEN_FRAMEPACKING = "videoscreen.framepacking";
- const std::string CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE = "audiooutput.audiodevice";
- const std::string CSettings::SETTING_AUDIOOUTPUT_CHANNELS = "audiooutput.channels";
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_DISPLAYPROFILE;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_GUICALIBRATION;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_TESTPATTERN;
+-constexpr const char* CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE;
++constexpr const char* CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGEAML;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_FRAMEPACKING;
+ constexpr const char* CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE;
+ constexpr const char* CSettings::SETTING_AUDIOOUTPUT_CHANNELS;
 @@ -854,6 +858,8 @@ void CSettings::InitializeISettingCallbacks()
    settingSet.insert(CSettings::SETTING_VIDEOSCREEN_SCREEN);
    settingSet.insert(CSettings::SETTING_VIDEOSCREEN_RESOLUTION);
@@ -219,24 +219,24 @@ index d0743b3..d33dc4c 100644
 --- a/xbmc/settings/Settings.h
 +++ b/xbmc/settings/Settings.h
 @@ -291,6 +291,10 @@ public:
-   static const std::string SETTING_VIDEOSCREEN_SCREENMODE;
-   static const std::string SETTING_VIDEOSCREEN_FAKEFULLSCREEN;
-   static const std::string SETTING_VIDEOSCREEN_BLANKDISPLAYS;
-+  static const std::string SETTING_VIDEOSCREEN_FORCERGB;
-+  static const std::string SETTING_VIDEOSCREEN_LOCKHPD;
-+  static const std::string SETTING_VIDEOSCREEN_MUTEHDMI;
-+  static const std::string SETTING_VIDEOSCREEN_FORCE422;
-   static const std::string SETTING_VIDEOSCREEN_STEREOSCOPICMODE;
-   static const std::string SETTING_VIDEOSCREEN_PREFEREDSTEREOSCOPICMODE;
-   static const std::string SETTING_VIDEOSCREEN_NOOFBUFFERS;
+   static constexpr auto SETTING_VIDEOSCREEN_SCREENMODE = "videoscreen.screenmode";
+   static constexpr auto SETTING_VIDEOSCREEN_FAKEFULLSCREEN = "videoscreen.fakefullscreen";
+   static constexpr auto SETTING_VIDEOSCREEN_BLANKDISPLAYS = "videoscreen.blankdisplays";
++  static constexpr auto SETTING_VIDEOSCREEN_FORCERGB = "videoscreen.forcergb";
++  static constexpr auto SETTING_VIDEOSCREEN_LOCKHPD = "videoscreen.lockhpd";
++  static constexpr auto SETTING_VIDEOSCREEN_MUTEHDMI = "videoscreen.mutehdmi";
++  static constexpr auto SETTING_VIDEOSCREEN_FORCE422 = "videoscreen.force422";
+   static constexpr auto SETTING_VIDEOSCREEN_STEREOSCOPICMODE = "videoscreen.stereoscopicmode";
+   static constexpr auto SETTING_VIDEOSCREEN_PREFEREDSTEREOSCOPICMODE =
+       "videoscreen.preferedstereoscopicmode";
 @@ -299,6 +303,7 @@ public:
-   static const std::string SETTING_VIDEOSCREEN_GUICALIBRATION;
-   static const std::string SETTING_VIDEOSCREEN_TESTPATTERN;
-   static const std::string SETTING_VIDEOSCREEN_LIMITEDRANGE;
-+  static const std::string SETTING_VIDEOSCREEN_LIMITEDRANGEAML;
-   static const std::string SETTING_VIDEOSCREEN_FRAMEPACKING;
-   static const std::string SETTING_AUDIOOUTPUT_AUDIODEVICE;
-   static const std::string SETTING_AUDIOOUTPUT_CHANNELS;
+   static constexpr auto SETTING_VIDEOSCREEN_GUICALIBRATION = "videoscreen.guicalibration";
+   static constexpr auto SETTING_VIDEOSCREEN_TESTPATTERN = "videoscreen.testpattern";
+   static constexpr auto SETTING_VIDEOSCREEN_LIMITEDRANGE = "videoscreen.limitedrange";
++  static constexpr auto SETTING_VIDEOSCREEN_LIMITEDRANGEAML = "videoscreen.limitedrangeaml";
+   static constexpr auto SETTING_VIDEOSCREEN_FRAMEPACKING = "videoscreen.framepacking";
+   static constexpr auto SETTING_AUDIOOUTPUT_AUDIODEVICE = "audiooutput.audiodevice";
+   static constexpr auto SETTING_AUDIOOUTPUT_CHANNELS = "audiooutput.channels";
 diff --git a/xbmc/windowing/amlogic/WinSystemAmlogic.cpp b/xbmc/windowing/amlogic/WinSystemAmlogic.cpp
 old mode 100644
 new mode 100755
