@@ -69,25 +69,25 @@ index 829e7b5af6..f9aab1a1e3 100644
 --- a/xbmc/settings/Settings.cpp
 +++ b/xbmc/settings/Settings.cpp
 @@ -324,6 +324,7 @@ const std::string CSettings::SETTING_SMB_WORKGROUP = "smb.workgroup";
- const std::string CSettings::SETTING_SMB_MINPROTOCOL = "smb.minprotocol";
- const std::string CSettings::SETTING_SMB_MAXPROTOCOL = "smb.maxprotocol";
- const std::string CSettings::SETTING_SMB_LEGACYSECURITY = "smb.legacysecurity";
-+const std::string CSettings::SETTING_SMB2_FIXMTU = "smb2.fixmtu";
- const std::string CSettings::SETTING_VIDEOSCREEN_MONITOR = "videoscreen.monitor";
- const std::string CSettings::SETTING_VIDEOSCREEN_SCREEN = "videoscreen.screen";
- const std::string CSettings::SETTING_VIDEOSCREEN_WHITELIST = "videoscreen.whitelist";
+ constexpr const char* CSettings::SETTING_SMB_MINPROTOCOL;
+ constexpr const char* CSettings::SETTING_SMB_MAXPROTOCOL;
+ constexpr const char* CSettings::SETTING_SMB_LEGACYSECURITY;
++constexpr const char* CSettings::SETTING_SMB2_FIXMTU;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_MONITOR;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_SCREEN;
+ constexpr const char* CSettings::SETTING_VIDEOSCREEN_WHITELIST;
 diff --git a/xbmc/settings/Settings.h b/xbmc/settings/Settings.h
 index d0743b32d3..e6b593dd84 100644
 --- a/xbmc/settings/Settings.h
 +++ b/xbmc/settings/Settings.h
 @@ -284,6 +284,7 @@ public:
-   static const std::string SETTING_SMB_MINPROTOCOL;
-   static const std::string SETTING_SMB_MAXPROTOCOL;
-   static const std::string SETTING_SMB_LEGACYSECURITY;
-+  static const std::string SETTING_SMB2_FIXMTU;
-   static const std::string SETTING_VIDEOSCREEN_MONITOR;
-   static const std::string SETTING_VIDEOSCREEN_SCREEN;
-   static const std::string SETTING_VIDEOSCREEN_WHITELIST;
+   static constexpr auto SETTING_SMB_MINPROTOCOL = "smb.minprotocol";
+   static constexpr auto SETTING_SMB_MAXPROTOCOL = "smb.maxprotocol";
+   static constexpr auto SETTING_SMB_LEGACYSECURITY = "smb.legacysecurity";
++  static constexpr auto SETTING_SMB2_FIXMTU = "smb2.fixmtu";
+   static constexpr auto SETTING_VIDEOSCREEN_MONITOR = "videoscreen.monitor";
+   static constexpr auto SETTING_VIDEOSCREEN_SCREEN = "videoscreen.screen";
+   static constexpr auto SETTING_VIDEOSCREEN_WHITELIST = "videoscreen.whitelist";
 -- 
 2.17.1
 
