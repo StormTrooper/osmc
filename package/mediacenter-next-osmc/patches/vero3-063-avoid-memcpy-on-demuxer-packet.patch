@@ -8,7 +8,7 @@ high bitrate videos can be significant.
 ---
  xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp | 17 ++++++++++++-----
  xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxUtils.cpp  |  9 +++++++--
- xbmc/cores/VideoPlayer/Interface/Addon/DemuxPacket.h  |  3 +++
+ xbmc/cores/VideoPlayer/Interface/DemuxPacket.h  |  3 +++
  3 files changed, 22 insertions(+), 7 deletions(-)
 
 diff --git a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp
@@ -81,10 +81,10 @@ index 1b70b9d..9616967 100644
      if (pPacket->iSideDataElems)
      {
        AVPacket avPkt;
-diff --git a/xbmc/cores/VideoPlayer/Interface/Addon/DemuxPacket.h b/xbmc/cores/VideoPlayer/Interface/Addon/DemuxPacket.h
+diff --git a/xbmc/cores/VideoPlayer/Interface/DemuxPacket.h b/xbmc/cores/VideoPlayer/Interface/DemuxPacket.h
 index f8ceab2..c7e04be 100644
---- a/xbmc/cores/VideoPlayer/Interface/Addon/DemuxPacket.h
-+++ b/xbmc/cores/VideoPlayer/Interface/Addon/DemuxPacket.h
+--- a/xbmc/cores/VideoPlayer/Interface/DemuxPacket.h
++++ b/xbmc/cores/VideoPlayer/Interface/DemuxPacket.h
 @@ -23,6 +23,8 @@ extern "C"
 
    struct DemuxCryptoInfo;
