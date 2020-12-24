@@ -189,7 +189,7 @@ index 3360e1c..0d23b8f 100644
  constexpr const char* CSettings::SETTING_VIDEOSCREEN_SCREENMODE;
  constexpr const char* CSettings::SETTING_VIDEOSCREEN_FAKEFULLSCREEN;
  constexpr const char* CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS;
-+constexpr const char* CSettings::SETTING_VIDEOSCREEN_FORCERBG";
++constexpr const char* CSettings::SETTING_VIDEOSCREEN_FORCERGB;
 +constexpr const char* CSettings::SETTING_VIDEOSCREEN_LOCKHPD;
 +constexpr const char* CSettings::SETTING_VIDEOSCREEN_MUTEHDMI;
 +constexpr const char* CSettings::SETTING_VIDEOSCREEN_FORCE422;
