@@ -780,7 +780,7 @@ index 0000000000..10e73cc74f
 +#include "AMLCodec.h"
 +#include "DynamicDll.h"
 +
-+#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
++#include "cores/VideoPlayer/Interface/TimingConstants.h"
 +#include "cores/VideoPlayer/Process/ProcessInfo.h"
 +#include "cores/VideoPlayer/VideoRenderers/RenderFlags.h"
 +#include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
