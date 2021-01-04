@@ -22,7 +22,7 @@ index 870a6bb92c..1e3118ca31 100644
 -      CDisplaySettings::GetInstance().SetCurrentResolution(RES_DESKTOP);
 +      CDisplaySettings::GetInstance().SetCurrentResolution(RES_DESKTOP, true);
        CServiceBroker::GetWinSystem()->GetGfxContext().SetVideoResolution(RES_DESKTOP, true);
-       CLog::Log(LOGNOTICE, "Updated resolutions and set desktop");
+       CLog::Log(LOGINFO, "Updated resolutions and set desktop");
      }
 diff --git a/xbmc/settings/DisplaySettings.cpp b/xbmc/settings/DisplaySettings.cpp
 index 430f7d1b91..2f41270abb 100644
@@ -103,8 +103,8 @@ index 6f812d5bbd..646207701a 100644
 +  if (curDesktopSetting == "DESKTOP")
 +    curDesktopSetting = curResolution;
 +
-+  CLog::Log(LOGNOTICE, "Current display setting is %s", curDesktopSetting.c_str());
-+  CLog::Log(LOGNOTICE, "Current output resolution is %s", curResolution.c_str());
++  CLog::Log(LOGINFO, "Current display setting is %s", curDesktopSetting.c_str());
++  CLog::Log(LOGINFO, "Current output resolution is %s", curResolution.c_str());
 +
    RESOLUTION ResDesktop = RES_INVALID;
    RESOLUTION res_index  = RES_DESKTOP;
@@ -131,7 +131,7 @@ index 6f812d5bbd..646207701a 100644
 +      ResDesktop = res_index;
 +      resExactMatch = true;
 +      newRes = ResString;
-+      CLog::Log(LOGNOTICE, "Current resolution setting found at 16 + %d", i);
++      CLog::Log(LOGINFO, "Current resolution setting found at 16 + %d", i);
 +    }
 +    /* prefer CTA to VESA modes */
 +    if (ResString.substr(5,5).compare(ResFallback.substr(0,5)) < 0)
@@ -143,7 +143,7 @@ index 6f812d5bbd..646207701a 100644
        ResDesktop = res_index;
 +      ResFallback = ResString.substr(5,18);
 +      newRes = ResString;
-+      CLog::Log(LOGNOTICE, "Fallback resolution at 16 + %d %s", i, ResFallback.c_str());
++      CLog::Log(LOGINFO, "Fallback resolution at 16 + %d %s", i, ResFallback.c_str());
      }
  
      res_index = (RESOLUTION)((int)res_index + 1);
