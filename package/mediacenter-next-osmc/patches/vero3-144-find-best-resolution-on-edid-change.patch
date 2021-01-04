@@ -151,11 +151,11 @@ index 6f812d5bbd..646207701a 100644
    // set RES_DESKTOP
    if (ResDesktop != RES_INVALID)
    {
--    CLog::Log(LOGNOTICE, "Found (%dx%d%s@%f) at %d, setting to RES_DESKTOP at %d",
+-    CLog::Log(LOGINFO, "Found (%dx%d%s@%f) at %d, setting to RES_DESKTOP at %d",
 -      resDesktop.iWidth, resDesktop.iHeight,
 -      resDesktop.dwFlags & D3DPRESENTFLAG_INTERLACED ? "i" : "",
 -      resDesktop.fRefreshRate,
-+    CLog::Log(LOGNOTICE, "Found best resolution %s at %d, setting to RES_DESKTOP at %d", newRes,
++    CLog::Log(LOGINFO, "Found best resolution %s at %d, setting to RES_DESKTOP at %d", newRes,
        (int)ResDesktop, (int)RES_DESKTOP);
  
      CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP) = CDisplaySettings::GetInstance().GetResolutionInfo(ResDesktop);
