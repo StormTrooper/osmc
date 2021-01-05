@@ -203,7 +203,7 @@ index a4b2fc77d4..318c98de87
 @@ -15,6 +15,7 @@
  #include "windowing/WinSystem.h"
  #include "threads/SystemClock.h"
- #include "EGL/egl.h"
+ #include "system_egl.h"
 +#include <thread>
  
  class IDispResource;
