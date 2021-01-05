@@ -5397,7 +5397,7 @@ index 0000000000..0637f83fc0
 +
 +#include <linux/fb.h>
 +
-+#include <EGL/egl.h>
++#include "system_egl.h"
 +
 +using namespace KODI;
 +
@@ -5652,7 +5652,7 @@ index 0000000000..a4b2fc77d4
 +#include "threads/CriticalSection.h"
 +#include "windowing/WinSystem.h"
 +#include "threads/SystemClock.h"
-+#include "EGL/egl.h"
++#include "system_egl.h"
 +
 +class IDispResource;
 +
