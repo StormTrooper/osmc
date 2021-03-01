@@ -21,7 +21,7 @@ if [ "$1" == "rbp2" ] || [ "$1" == "rbp4" ] || [ "$1" == "vero3" ]
 then
     BUILD_OPTS=$(($BUILD_OPTS + $BUILD_OPTION_NEEDS_SWAP))
 fi
-build_in_env "${1}" $(pwd) "mediacenter-next-osmc" "$BUILD_OPTS"
+build_in_env "${1}" $(pwd) "mediacenter-osmc-next" "$BUILD_OPTS"
 build_return=$?
 if [ $build_return == 99 ]
 then
