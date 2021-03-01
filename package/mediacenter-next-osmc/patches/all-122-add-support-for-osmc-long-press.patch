@@ -20,40 +20,23 @@ index 0000000000..acfbbeb83a
 +<!-- We have remapped those keys to kpleftparen and kprightparen with udev to overcome this issue. This file fixes what that change breaks	 -->
 +<!-- as well as emulates the original remote behavior it had while using lirc. The behaviors that were not emulated was the home key during	 -->
 +<!-- fullscreen video and visualazation playback. The modified layout maps in Kodi as...													 -->
-+<!-- 																																		 
--->
-+<!-- Home  = escape        <key id="61467">																									 
--->
-+<!-- Info  = leftbracket   <key id="61480">																									 
--->
-+<!-- Up    = up            <key id="61568">																									 
--->
-+<!-- Down  = down          <key id="61569">																									 
--->
-+<!-- Left  = left          <key id="61570">																									 
--->
-+<!-- Right = right         <key id="61571">																									 
--->
-+<!-- OK    = return        <key id="61453">																									 
--->
-+<!-- Back  = browser_back  <key id="61616">																									 
--->
-+<!-- Menu  = rightbracket  <key id="61481">																									 
--->
-+<!-- Play  = play_pause    <key id="61629">																									 
--->
-+<!-- Stop  = stop          <key id="61628">																									 
--->
-+<!-- Vol-  = volume_down   <key id="61624">																									 
--->
-+<!-- Vol+  = volume_up     <key id="61625">																									 
--->
-+<!-- 																																		 
--->
-+<!-- Keymap created by DarwinDesign version 20-02-27																						 
--->
-+<!-- 																																		 
--->
++<!-- 																																		 -->
++<!-- Home  = escape        <key id="61467">																									 -->
++<!-- Info  = leftbracket   <key id="61480">																									 -->
++<!-- Up    = up            <key id="61568">																									 -->
++<!-- Down  = down          <key id="61569">																									 -->
++<!-- Left  = left          <key id="61570">																									 -->
++<!-- Right = right         <key id="61571">																									 -->
++<!-- OK    = return        <key id="61453">																									 -->
++<!-- Back  = browser_back  <key id="61616">																									 -->
++<!-- Menu  = rightbracket  <key id="61481">																									 -->
++<!-- Play  = play_pause    <key id="61629">																									 -->
++<!-- Stop  = stop          <key id="61628">																									 -->
++<!-- Vol-  = volume_down   <key id="61624">																									 -->
++<!-- Vol+  = volume_up     <key id="61625">																									 -->
++<!-- 																																		 -->
++<!-- Keymap created by DarwinDesign version 20-02-27																						 -->
++<!-- 																																		 -->
 +<keymap>
 +	<global>
 +		<keyboard>
