@@ -54,7 +54,7 @@ index b38409a..0edd896 100644
 +  OSMCWalkthroughState m_eOSMCWalkthroughState;
 +  void SetOSMCWalkthroughState(OSMCWalkthroughState state);
 +
-   void UnloadSkin();
+   void UnloadSkin(bool forReload = false);
    bool LoadCustomWindows();
    void ReloadSkin(bool confirm = false);
 -- 

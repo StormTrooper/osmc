@@ -89,8 +89,7 @@ syspaths="/sys/class/video/
 /sys/module/amvdec_h264mvc/parameters/view_mode
 /sys/module/di/parameters/di_debug_flag
 /sys/class/codec_mm/tvp_enable
-/sys/module/amvdec_vc1/parameters/force_prog
-/sys/class/ppmgr/orientation"
+/sys/module/amvdec_vc1/parameters/force_prog"
 
 for syspath in $syspaths; do
 	chgrp -R video $syspath
